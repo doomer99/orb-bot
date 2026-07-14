@@ -44,7 +44,7 @@ TARGET_POINTS = float(os.environ.get("TARGET_POINTS", "20.0"))
 TRADIER_SANDBOX  = os.environ.get("TRADIER_SANDBOX", "true").lower() == "true"
 TRADIER_TOKEN    = os.environ.get("I4Xd29ImZXx5xT1OZ9kBVNI6EbQI",   "")   # sandbox or live token
 TRADIER_ACCOUNT  = os.environ.get("VA72919156", "")   # sandbox or live account
-TRADIER_BASE     = ("https://sandbox.tradier.com/v1/"
+TRADIER_BASE     = ("https://sandbox.tradier.com"
                     if TRADIER_SANDBOX
                     else "https://api.tradier.com/v1")
 
