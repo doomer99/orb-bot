@@ -259,7 +259,7 @@ def main():
     st.divider()
     st.caption(f"Stop: {STOP_POINTS:.0f}pts  |  "
                f"Target: {TARGET_POINTS:.0f}pts  |  "
-               f"Contracts: {CONTRACTS}  |  "
+              f"P1 Qty: {st.session_state.get('p1_qty', 1)}  |  "
                f"Updated: {state.get('last_update','—')}")
 
     # Auto-refresh every 20 seconds
