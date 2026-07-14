@@ -11,7 +11,7 @@ import pytz
 import time
 
 # Import shared state from main bot
-from main import state, STOP_POINTS, TARGET_POINTS, CONTRACTS, SIM_MODE
+from main import state, STOP_POINTS, TARGET_POINTS, SIM_MODE, P1_ENABLED, P1_QTY, P2_ENABLED, P2_QTY
 
 ET = pytz.timezone("America/New_York")
 
