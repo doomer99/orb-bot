@@ -83,6 +83,7 @@ day_pnl = 0.0
 
 def get_tradier_balance():
     if not TRADIER_TOKEN or not TRADIER_ACCOUNT:
+        log("Balance: no token or account set")
         return None
     try:
         r = requests.get(
@@ -93,12 +94,33 @@ def get_tradier_balance():
             },
             timeout=5
         )
-        data = r.json().get("balances", {})
+        log(f"Tradier raw: {r.text[:200]}")
+        raw = r.json()
+        data = raw.get("balances", {})
+
+        # Try multiple possible field names
+        equity = (
+            data.get("total_equity") or
+            data.get("equity") or
+            data.get("net_value") or
+            data.get("total_value") or 0
+        )
+        cash = (
+            data.get("cash", {}).get("cash_available") or
+            data.get("cash_available") or
+            data.get("cash", {}).get("total_cash") or
+            data.get("total_cash") or 0
+        )
+        day_pnl = (
+            data.get("pnl", {}).get("day") or
+            data.get("day_pnl") or
+            data.get("pnl", {}).get("current_requirement") or 0
+        )
+
         return {
-            "equity":  float(data.get("total_equity", 0)),
-            "cash":    float(data.get("cash", {}).get(
-                            "cash_available", 0)),
-            "day_pnl": float(data.get("pnl", {}).get("day", 0)),
+            "equity":  float(equity),
+            "cash":    float(cash),
+            "day_pnl": float(day_pnl),
         }
     except Exception as e:
         log(f"Balance error: {e}")
