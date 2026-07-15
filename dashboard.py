@@ -12,7 +12,9 @@ from main import (state, STOP_POINTS, TARGET_POINTS,
 st.set_page_config(
     page_title="ORB Signal",
     page_icon="📊",
-    layout="centered"
+    layout="wide",
+    initial_sidebar_state="collapsed"
+
 )
 
 # Session defaults
