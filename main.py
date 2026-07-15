@@ -1,10 +1,10 @@
 # ============================================================
-# main.py — 5-Minute ORB Bot
+# main.py — 5-Minute NY Open ORB Bot
 # ALL secrets in Railway Variables — never in this file
 # ============================================================
 
 import os, threading, time, requests
-from datetime import datetime
+from datetime import datetime, date
 import pandas as pd
 import pytz
 import yfinance as yf
@@ -37,15 +37,15 @@ SIM_MODE      = os.environ.get("SIM_MODE",      "true").lower() == "true"
 STOP_POINTS   = float(os.environ.get("STOP_POINTS",   "8.0"))
 TARGET_POINTS = float(os.environ.get("TARGET_POINTS", "20.0"))
 
-# Tradier SANDBOX — paper order execution + balance display
-TRADIER_SANDBOX  = os.environ.get("TRADIER_SANDBOX", "true").lower() == "true"
-TRADIER_TOKEN    = os.environ.get("TRADIER_TOKEN",   "")
-TRADIER_ACCOUNT  = os.environ.get("TRADIER_ACCOUNT", "")
-TRADIER_BASE     = ("https://sandbox.tradier.com/v1"
-                    if TRADIER_SANDBOX
-                    else "https://api.tradier.com/v1")
+# Tradier SANDBOX — paper orders + balance display
+TRADIER_SANDBOX = os.environ.get("TRADIER_SANDBOX", "true").lower() == "true"
+TRADIER_TOKEN   = os.environ.get("TRADIER_TOKEN",   "")
+TRADIER_ACCOUNT = os.environ.get("TRADIER_ACCOUNT", "")
+TRADIER_BASE    = ("https://sandbox.tradier.com/v1"
+                   if TRADIER_SANDBOX
+                   else "https://api.tradier.com/v1")
 
-# Tradier LIVE — real-time market data only (no delay)
+# Tradier LIVE — real-time market data only
 TRADIER_LIVE_TOKEN = os.environ.get("TRADIER_LIVE_TOKEN", "")
 TRADIER_LIVE_BASE  = "https://api.tradier.com/v1"
 
@@ -56,14 +56,14 @@ P1_PASSWORD = os.environ.get("P1_PASSWORD",    "")
 P1_TICKER   = os.environ.get("P1_TICKER",      "MES1!")
 P1_QTY      = int(os.environ.get("P1_QUANTITY","1"))
 
-# Pipeline 2 — Tradier options
+# Pipeline 2 — Tradier 0DTE options
 P2_ENABLED  = os.environ.get("P2_ENABLED",     "false").lower() == "true"
 P2_URL      = os.environ.get("P2_WEBHOOK_URL", "")
 P2_PASSWORD = os.environ.get("P2_PASSWORD",    "")
 P2_TICKER   = os.environ.get("P2_TICKER",      "SPY")
 P2_QTY      = int(os.environ.get("P2_QUANTITY","1"))
 
-# Pipeline 3 — future prop firm placeholder
+# Pipeline 3 — future prop firm
 P3_ENABLED  = os.environ.get("P3_ENABLED",     "false").lower() == "true"
 P3_URL      = os.environ.get("P3_WEBHOOK_URL", "")
 P3_PASSWORD = os.environ.get("P3_PASSWORD",    "")
@@ -76,14 +76,10 @@ DAILY_LOSS_BUFFER = float(os.environ.get("DAILY_LOSS_BUFFER", "200"))
 
 day_pnl = 0.0
 
-# ── Market data — real-time from live Tradier ─────────────────
+# ── Market data ───────────────────────────────────────────────
 
 def get_spy_1min():
-    """
-    Real-time SPY 1-min bars.
-    Uses live Tradier if token set (no delay).
-    Falls back to Yahoo Finance if not.
-    """
+    """Real-time SPY 1-min bars from live Tradier. Falls back to Yahoo."""
     if TRADIER_LIVE_TOKEN:
         try:
             r = requests.get(
@@ -103,12 +99,10 @@ def get_spy_1min():
             )
             data = r.json().get("series", {}).get("data", [])
             if not data:
-                log("Tradier data: no bars yet")
                 return None
             if isinstance(data, dict):
                 data = [data]
-            records = []
-            times   = []
+            records, times = [], []
             for bar in data:
                 records.append({
                     "Open":   float(bar.get("open",   0)),
@@ -124,23 +118,21 @@ def get_spy_1min():
             ).tz_localize("America/New_York")
             return df
         except Exception as e:
-            log(f"Tradier data error: {e} — falling back to Yahoo")
+            log(f"Tradier data error: {e} — trying Yahoo")
 
-    # Yahoo fallback
     try:
-        spy = yf.download("SPY", period="1d",
-                          interval="1m", progress=False,
-                          auto_adjust=True)
+        spy = yf.download("SPY", period="1d", interval="1m",
+                          progress=False, auto_adjust=True)
         if hasattr(spy.columns, "levels"):
             spy.columns = spy.columns.get_level_values(0)
         spy.index = spy.index.tz_convert(ET)
         return spy
     except Exception as e:
-        log(f"Yahoo data error: {e}")
+        log(f"Yahoo error: {e}")
         return None
 
 def get_current_price():
-    """Real-time SPY quote."""
+    """Real-time SPY price."""
     if TRADIER_LIVE_TOKEN:
         try:
             r = requests.get(
@@ -157,11 +149,9 @@ def get_current_price():
         except Exception as e:
             log(f"Quote error: {e}")
 
-    # Yahoo fallback
     try:
-        spy = yf.download("SPY", period="1d",
-                          interval="1m", progress=False,
-                          auto_adjust=True)
+        spy = yf.download("SPY", period="1d", interval="1m",
+                          progress=False, auto_adjust=True)
         if hasattr(spy.columns, "levels"):
             spy.columns = spy.columns.get_level_values(0)
         return float(spy["Close"].iloc[-1])
@@ -176,7 +166,7 @@ def get_5min_range(spy_1m):
         return None, None
     return float(bars["High"].max()), float(bars["Low"].min())
 
-# ── Tradier balance pull ──────────────────────────────────────
+# ── Tradier balance ───────────────────────────────────────────
 
 def get_tradier_balance():
     if not TRADIER_TOKEN or not TRADIER_ACCOUNT:
@@ -191,8 +181,7 @@ def get_tradier_balance():
             },
             timeout=5
         )
-        raw  = r.json()
-        data = raw.get("balances", {})
+        data   = r.json().get("balances", {})
         equity = float(data.get("total_equity", 0))
         cash   = float(
             data.get("cash", {}).get("cash_available", 0) or
@@ -200,7 +189,8 @@ def get_tradier_balance():
         pnl    = float(
             data.get("pnl", {}).get("day", 0) or
             data.get("day_pnl", 0) or 0)
-        log(f"Balance: ${equity:,.0f}  Day P&L: ${pnl:+,.0f}")
+        log(f"Balance: ${equity:,.0f}  "
+            f"Day P&L: ${pnl:+,.0f}")
         return {"equity": equity, "cash": cash, "day_pnl": pnl}
     except Exception as e:
         log(f"Balance error: {e}")
@@ -225,15 +215,110 @@ def risk_ok():
         return False
     return True
 
+# ── Option symbol builder ─────────────────────────────────────
+
+def build_option_symbol(direction, spy_price):
+    """
+    Build today's 0DTE ATM option symbol.
+    Example: SPY260715C00560000
+    SPY + YYMMDD + C/P + 8-digit strike (3 decimal places)
+    $560.00 strike = 00560000
+    """
+    today      = date.today().strftime("%y%m%d")
+    strike     = round(spy_price)  # ATM = nearest $1 strike
+    opt        = "C" if direction == "UP" else "P"
+    strike_str = f"{int(strike * 1000):08d}"
+    symbol     = f"SPY{today}{opt}{strike_str}"
+    log(f"Option symbol: {symbol}")
+    return symbol
+
+# ── Tradier option orders ─────────────────────────────────────
+
+def place_tradier_option(direction, qty):
+    """Place 0DTE ATM SPY option — buy to open."""
+    if not TRADIER_TOKEN or not TRADIER_ACCOUNT:
+        log("❌ Tradier credentials not set")
+        return False
+    try:
+        spy_price = get_current_price()
+        if not spy_price:
+            log("❌ No SPY price for option symbol")
+            return False
+        symbol = build_option_symbol(direction, spy_price)
+        r = requests.post(
+            f"{TRADIER_BASE}/accounts/"
+            f"{TRADIER_ACCOUNT}/orders",
+            headers={
+                "Authorization": f"Bearer {TRADIER_TOKEN}",
+                "Accept":        "application/json",
+                "Content-Type":
+                    "application/x-www-form-urlencoded",
+            },
+            data={
+                "class":         "option",
+                "symbol":        "SPY",
+                "option_symbol": symbol,
+                "side":          "buy_to_open",
+                "quantity":      qty,
+                "type":          "market",
+                "duration":      "day",
+            },
+            timeout=10
+        )
+        ok = r.status_code == 200
+        log(f"{'✅' if ok else '❌'} "
+            f"{symbol}: {r.status_code} "
+            f"{r.text[:80]}")
+        return ok
+    except Exception as e:
+        log(f"❌ Option order error: {e}")
+        return False
+
+def close_tradier_option(direction, qty):
+    """Close 0DTE ATM SPY option — sell to close."""
+    if not TRADIER_TOKEN or not TRADIER_ACCOUNT:
+        return False
+    try:
+        spy_price = get_current_price() or 560
+        symbol    = build_option_symbol(direction, spy_price)
+        r = requests.post(
+            f"{TRADIER_BASE}/accounts/"
+            f"{TRADIER_ACCOUNT}/orders",
+            headers={
+                "Authorization": f"Bearer {TRADIER_TOKEN}",
+                "Accept":        "application/json",
+                "Content-Type":
+                    "application/x-www-form-urlencoded",
+            },
+            data={
+                "class":         "option",
+                "symbol":        "SPY",
+                "option_symbol": symbol,
+                "side":          "sell_to_close",
+                "quantity":      qty,
+                "type":          "market",
+                "duration":      "day",
+            },
+            timeout=10
+        )
+        ok = r.status_code == 200
+        log(f"{'✅' if ok else '❌'} "
+            f"Close {symbol}: {r.status_code}")
+        return ok
+    except Exception as e:
+        log(f"❌ Close error: {e}")
+        return False
+
 # ── Webhook ───────────────────────────────────────────────────
 
 def send_webhook(url, password, extra, label):
     if not url:
-        log(f"⚠️ {label}: no webhook URL in Railway Variables")
+        log(f"⚠️ {label}: no webhook URL set")
         return False
     try:
         r = requests.post(
-            url, json={"password": password, **extra},
+            url,
+            json={"password": password, **extra},
             timeout=10)
         ok = r.status_code == 200
         log(f"{'✅' if ok else '❌'} {label}: {r.status_code}")
@@ -242,40 +327,7 @@ def send_webhook(url, password, extra, label):
         log(f"❌ {label}: {e}")
         return False
 
-# ── Order execution ───────────────────────────────────────────
-
-def place_tradier_option(direction, qty):
-    """Place 0DTE SPY option order via Tradier."""
-    if not TRADIER_TOKEN or not TRADIER_ACCOUNT:
-        log("❌ Tradier credentials not set")
-        return False
-    try:
-        opt  = "call" if direction == "UP" else "put"
-        side = "buy_to_open"
-        r = requests.post(
-            f"{TRADIER_BASE}/accounts/{TRADIER_ACCOUNT}/orders",
-            headers={
-                "Authorization": f"Bearer {TRADIER_TOKEN}",
-                "Accept":        "application/json",
-                "Content-Type":  "application/x-www-form-urlencoded",
-            },
-            data={
-                "class":    "option",
-                "symbol":   "SPY",
-                "side":     side,
-                "quantity": qty,
-                "type":     "market",
-                "duration": "day",
-            },
-            timeout=10
-        )
-        ok = r.status_code == 200
-        log(f"{'✅' if ok else '❌'} Tradier {opt} order: "
-            f"{r.status_code}")
-        return ok
-    except Exception as e:
-        log(f"❌ Tradier option error: {e}")
-        return False
+# ── Place order — all pipelines ───────────────────────────────
 
 def place_order(direction):
     qty1 = state.get("p1_qty", P1_QTY)
@@ -288,7 +340,7 @@ def place_order(direction):
             f" {qty1}x MES")
         log(f"[SIM] P2 Tradier options: "
             f"{'ON' if state.get('p2_enabled', P2_ENABLED) else 'OFF'}"
-            f" {qty2}x SPY")
+            f" {qty2}x SPY 0DTE")
         state["p1_status"] = (
             "SIM ✓" if state.get("p1_enabled", P1_ENABLED)
             else "OFF")
@@ -311,7 +363,7 @@ def place_order(direction):
     else:
         state["p1_status"] = "OFF"
 
-    # Pipeline 2 — Tradier options
+    # Pipeline 2 — Tradier 0DTE options
     if state.get("p2_enabled", P2_ENABLED):
         if P2_URL:
             opt = "call" if direction == "UP" else "put"
@@ -341,6 +393,8 @@ def place_order(direction):
 
     return any(results) if results else False
 
+# ── Close order — all pipelines ───────────────────────────────
+
 def close_order(direction):
     qty1 = state.get("p1_qty", P1_QTY)
     qty2 = state.get("p2_qty", P2_QTY)
@@ -349,6 +403,7 @@ def close_order(direction):
         log("[SIM] Close signal sent")
         return True
 
+    # Close Pipeline 1
     if state.get("p1_enabled", P1_ENABLED):
         send_webhook(P1_URL, P1_PASSWORD, {
             "ticker":        P1_TICKER,
@@ -357,38 +412,18 @@ def close_order(direction):
             "closePosition": True,
         }, "P1 Topstep CLOSE")
 
+    # Close Pipeline 2
     if state.get("p2_enabled", P2_ENABLED):
         if P2_URL:
             send_webhook(P2_URL, P2_PASSWORD, {
                 "ticker":        P2_TICKER,
                 "action":        "close",
                 "closePosition": True,
-            }, "P2 TradeYour CLOSE")
+            }, "P2 CLOSE")
         else:
-            try:
-                requests.post(
-                    f"{TRADIER_BASE}/accounts/"
-                    f"{TRADIER_ACCOUNT}/orders",
-                    headers={
-                        "Authorization": f"Bearer {TRADIER_TOKEN}",
-                        "Accept": "application/json",
-                        "Content-Type":
-                            "application/x-www-form-urlencoded",
-                    },
-                    data={
-                        "class":    "option",
-                        "symbol":   "SPY",
-                        "side":     "sell_to_close",
-                        "quantity": qty2,
-                        "type":     "market",
-                        "duration": "day",
-                    },
-                    timeout=10
-                )
-                log("✅ Tradier option closed")
-            except Exception as e:
-                log(f"❌ Tradier close error: {e}")
+            close_tradier_option(direction, qty2)
 
+    # Close Pipeline 3
     if P3_ENABLED:
         send_webhook(P3_URL, P3_PASSWORD, {
             "ticker":        P3_TICKER,
@@ -402,7 +437,8 @@ def close_order(direction):
 def run_bot():
     global day_pnl
     mode = "SANDBOX" if TRADIER_SANDBOX else "LIVE"
-    data = "LIVE Tradier" if TRADIER_LIVE_TOKEN else "Yahoo (delayed)"
+    data = ("LIVE Tradier" if TRADIER_LIVE_TOKEN
+            else "Yahoo (delayed)")
     log(f"ORB Bot started — SIM={SIM_MODE} "
         f"Orders={mode} Data={data}")
     log(f"P1 Topstep: {'ON' if P1_ENABLED else 'OFF'}")
@@ -441,7 +477,8 @@ def run_bot():
             continue
 
         # Before market
-        if now.hour < 9 or (now.hour == 9 and now.minute < 30):
+        if now.hour < 9 or (now.hour == 9 and
+                             now.minute < 30):
             state["phase"] = "waiting"
             time.sleep(30)
             continue
@@ -459,13 +496,14 @@ def run_bot():
             time.sleep(10)
             continue
 
-        # 9:35 — range locked
+        # 9:35 — range locked, start watching
         if (now.hour == 9 and now.minute >= 35 and
                 state["today"] != today_str and
                 state["phase"] != "active"):
             state["today"] = today_str
             state["phase"] = "watching"
-            log(f"Range locked: H={state['high5']} "
+            log(f"Range locked: "
+                f"H={state['high5']} "
                 f"L={state['low5']} "
                 f"Size={state['range_size']}")
 
@@ -484,12 +522,15 @@ def run_bot():
             direction = None
             for ts, bar in post.iterrows():
                 if float(bar["High"]) > state["high5"]:
-                    direction = "UP"; break
-                if float(bar["Low"])  < state["low5"]:
-                    direction = "DOWN"; break
+                    direction = "UP"
+                    break
+                if float(bar["Low"]) < state["low5"]:
+                    direction = "DOWN"
+                    break
 
             if direction:
-                price     = get_current_price() or state["high5"]
+                price     = (get_current_price() or
+                             state["high5"])
                 entry_idx = price * 10.0
                 stop      = (entry_idx - STOP_POINTS
                              if direction == "UP"
@@ -529,8 +570,8 @@ def run_bot():
                     f"{now.date()} {state['entry_time']}",
                     "%Y-%m-%d %H:%M:%S"
                 ).replace(tzinfo=ET)
-                elapsed = (
-                    now - entry_dt).total_seconds() / 60.0
+                elapsed = ((now - entry_dt).total_seconds()
+                           / 60.0)
             except:
                 elapsed = 0
 
@@ -561,7 +602,7 @@ def run_bot():
                             else "LOSS")
                 state.update({
                     "phase":  "done",
-                    "result": result
+                    "result": result,
                 })
                 log(f"CLOSED: {exit_reason} | "
                     f"{state['pnl_pts']:+.1f}pts | "
