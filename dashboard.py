@@ -108,24 +108,31 @@ def main():
     # ════════════════════════════════════════════════
     # TOPSTEP — MES FUTURES
     # ════════════════════════════════════════════════
-    p1_on = st.session_state.p1_on
-    status1 = state.get("p1_status", "—")
+   st.divider()
 
-    st.markdown(
-        f"#### {'🟢' if p1_on else '⚫'}  "
-        f"Topstep — MES Futures  "
-        f"{'`ACTIVE`' if p1_on else '`OFF`'}")
-    st.caption(f"Status: {status1}")
+    # ── Two column layout — Topstep left, Tradier right ───────
+    left, right = st.columns(2)
 
-    c1, c2 = st.columns(2)
-    with c1:
+    # ════════════════════════════════════════════════
+    # LEFT — TOPSTEP MES FUTURES
+    # ════════════════════════════════════════════════
+    with left:
+        p1_on   = st.session_state.p1_on
+        status1 = state.get("p1_status", "—")
+
+        st.markdown(
+            f"#### {'🟢' if p1_on else '⚫'}  "
+            f"Topstep — MES Futures")
+        st.caption(
+            f"{'ACTIVE' if p1_on else 'OFF'}  ·  {status1}")
+
         p1_bal = st.number_input(
             "Account size ($)",
             min_value=0, max_value=500000,
             value=st.session_state.p1_balance,
             step=1000, key="p1_bal")
         st.session_state.p1_balance = p1_bal
-    with c2:
+
         p1_str = st.number_input(
             "Win streak",
             min_value=0, max_value=100,
@@ -133,87 +140,85 @@ def main():
             step=1, key="p1_str")
         st.session_state.p1_streak = p1_str
 
-    rec    = rec_contracts(p1_str)
-    p1_qty = st.slider(
-        "Contracts to trade",
-        1, 12, st.session_state.p1_qty,
-        key="p1_sl")
-    st.session_state.p1_qty = p1_qty
-    state["p1_qty"]         = p1_qty
+        rec    = rec_contracts(p1_str)
+        p1_qty = st.slider(
+            "Contracts", 1, 12,
+            st.session_state.p1_qty, key="p1_sl")
+        st.session_state.p1_qty = p1_qty
+        state["p1_qty"]         = p1_qty
 
-    max_loss = p1_qty * 8 * 5
-    dd_pct   = max_loss / 2000 * 100
+        max_loss = p1_qty * 8 * 5
+        dd_pct   = max_loss / 2000 * 100
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Recommended", f"{rec} contracts")
-    c2.metric("Max loss",    f"${max_loss:,.0f}")
-    c3.metric("DD used",     f"{dd_pct:.0f}%")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Recommended", f"{rec}c")
+        c2.metric("Max loss",    f"${max_loss:,.0f}")
+        c3.metric("DD used",     f"{dd_pct:.0f}%")
 
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("✅ Use recommended", key="p1_rec"):
-            st.session_state.p1_qty = rec
-            state["p1_qty"] = rec
-            st.rerun()
-    with c2:
-        lbl1 = "Turn OFF" if p1_on else "Turn ON"
-        if st.button(lbl1, key="p1_tog"):
-            st.session_state.p1_on = not p1_on
-            state["p1_enabled"]    = not p1_on
-            st.rerun()
-
-    st.divider()
+        bc1, bc2 = st.columns(2)
+        with bc1:
+            if st.button("✅ Use recommended", key="p1_rec"):
+                st.session_state.p1_qty = rec
+                state["p1_qty"] = rec
+                st.rerun()
+        with bc2:
+            if st.button(
+                "Turn OFF" if p1_on else "Turn ON",
+                key="p1_tog"):
+                st.session_state.p1_on = not p1_on
+                state["p1_enabled"]    = not p1_on
+                st.rerun()
 
     # ════════════════════════════════════════════════
-    # TRADIER — 0DTE OPTIONS
+    # RIGHT — TRADIER OPTIONS
     # ════════════════════════════════════════════════
-    p2_on   = st.session_state.p2_on
-    status2 = state.get("p2_status", "—")
-    equity  = state.get("equity",  0.0)
-    cash    = state.get("cash",    0.0)
-    bal_pnl = state.get("day_pnl", 0.0)
-    sand    = os.environ.get(
-                "TRADIER_SANDBOX", "true").lower() == "true"
-    acct    = "SANDBOX" if sand else "LIVE"
+    with right:
+        p2_on   = st.session_state.p2_on
+        status2 = state.get("p2_status", "—")
+        equity  = state.get("equity",  0.0)
+        cash    = state.get("cash",    0.0)
+        bal_pnl = state.get("day_pnl", 0.0)
+        sand    = os.environ.get(
+                    "TRADIER_SANDBOX","true").lower()=="true"
+        acct    = "SANDBOX" if sand else "LIVE"
+        opt_type = "CALL" if (
+            not direction or direction=="UP") else "PUT"
 
-    st.markdown(
-        f"#### {'🟢' if p2_on else '⚫'}  "
-        f"Tradier Options ({acct})  "
-        f"{'`ACTIVE`' if p2_on else '`OFF`'}")
-    st.caption(f"Status: {status2}")
+        st.markdown(
+            f"#### {'🟢' if p2_on else '⚫'}  "
+            f"Tradier Options ({acct})")
+        st.caption(
+            f"{'ACTIVE' if p2_on else 'OFF'}  ·  {status2}")
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Equity",  f"${equity:,.0f}")
-    c2.metric("Cash",    f"${cash:,.0f}")
-    c3.metric("Day P&L", f"${bal_pnl:+,.0f}")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Equity",  f"${equity:,.0f}")
+        c2.metric("Cash",    f"${cash:,.0f}")
+        c3.metric("Day P&L", f"${bal_pnl:+,.0f}")
 
-    if equity == 0:
-        st.warning(
-            "⚠️ Balance $0 — "
-            "check TRADIER_TOKEN in Railway Variables")
+        if equity == 0:
+            st.warning(
+                "⚠️ Check TRADIER_TOKEN in Railway")
 
-    p2_qty = st.slider(
-        "Option contracts",
-        1, 20, st.session_state.p2_qty,
-        key="p2_sl")
-    st.session_state.p2_qty = p2_qty
-    state["p2_qty"]         = p2_qty
+        p2_qty = st.slider(
+            "Option contracts", 1, 20,
+            st.session_state.p2_qty, key="p2_sl")
+        st.session_state.p2_qty = p2_qty
+        state["p2_qty"]         = p2_qty
 
-    est_risk = p2_qty * 1.50 * 100
-    risk_pct = (est_risk / equity * 100) if equity > 0 else 0
-    opt_type = "CALL" if (not direction or direction == "UP") \
-               else "PUT"
+        est_risk = p2_qty * 1.50 * 100
+        risk_pct = (est_risk/equity*100) if equity>0 else 0
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Est. risk",   f"${est_risk:,.0f}")
-    c2.metric("% of account", f"{risk_pct:.1f}%")
-    c3.metric("Option type",  opt_type)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Est. risk",    f"${est_risk:,.0f}")
+        c2.metric("% of account", f"{risk_pct:.1f}%")
+        c3.metric("Option type",  opt_type)
 
-    lbl2 = "Turn OFF" if p2_on else "Turn ON"
-    if st.button(lbl2, key="p2_tog"):
-        st.session_state.p2_on = not p2_on
-        state["p2_enabled"]    = not p2_on
-        st.rerun()
+        if st.button(
+            "Turn OFF" if p2_on else "Turn ON",
+            key="p2_tog"):
+            st.session_state.p2_on = not p2_on
+            state["p2_enabled"]    = not p2_on
+            st.rerun()
 
     st.divider()
 
@@ -231,7 +236,5 @@ def main():
 
     time.sleep(20)
     st.rerun()
-
-main()
 
 main()
