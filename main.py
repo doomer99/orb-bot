@@ -79,7 +79,6 @@ day_pnl = 0.0
 # ── Market data ───────────────────────────────────────────────
 
 def get_spy_1min():
-    """Real-time SPY 1-min bars from live Tradier. Falls back to Yahoo."""
     if TRADIER_LIVE_TOKEN:
         try:
             r = requests.get(
@@ -132,7 +131,6 @@ def get_spy_1min():
         return None
 
 def get_current_price():
-    """Real-time SPY price."""
     if TRADIER_LIVE_TOKEN:
         try:
             r = requests.get(
@@ -189,8 +187,7 @@ def get_tradier_balance():
         pnl    = float(
             data.get("pnl", {}).get("day", 0) or
             data.get("day_pnl", 0) or 0)
-        log(f"Balance: ${equity:,.0f}  "
-            f"Day P&L: ${pnl:+,.0f}")
+        log(f"Balance: ${equity:,.0f}  Day P&L: ${pnl:+,.0f}")
         return {"equity": equity, "cash": cash, "day_pnl": pnl}
     except Exception as e:
         log(f"Balance error: {e}")
@@ -218,14 +215,8 @@ def risk_ok():
 # ── Option symbol builder ─────────────────────────────────────
 
 def build_option_symbol(direction, spy_price):
-    """
-    Build today's 0DTE ATM option symbol.
-    Example: SPY260715C00560000
-    SPY + YYMMDD + C/P + 8-digit strike (3 decimal places)
-    $560.00 strike = 00560000
-    """
     today      = date.today().strftime("%y%m%d")
-    strike     = round(spy_price)  # ATM = nearest $1 strike
+    strike     = round(spy_price)
     opt        = "C" if direction == "UP" else "P"
     strike_str = f"{int(strike * 1000):08d}"
     symbol     = f"SPY{today}{opt}{strike_str}"
@@ -235,19 +226,17 @@ def build_option_symbol(direction, spy_price):
 # ── Tradier option orders ─────────────────────────────────────
 
 def place_tradier_option(direction, qty):
-    """Place 0DTE ATM SPY option — buy to open."""
     if not TRADIER_TOKEN or not TRADIER_ACCOUNT:
         log("❌ Tradier credentials not set")
         return False
     try:
         spy_price = get_current_price()
         if not spy_price:
-            log("❌ No SPY price for option symbol")
+            log("❌ No SPY price")
             return False
         symbol = build_option_symbol(direction, spy_price)
         r = requests.post(
-            f"{TRADIER_BASE}/accounts/"
-            f"{TRADIER_ACCOUNT}/orders",
+            f"{TRADIER_BASE}/accounts/{TRADIER_ACCOUNT}/orders",
             headers={
                 "Authorization": f"Bearer {TRADIER_TOKEN}",
                 "Accept":        "application/json",
@@ -267,23 +256,20 @@ def place_tradier_option(direction, qty):
         )
         ok = r.status_code == 200
         log(f"{'✅' if ok else '❌'} "
-            f"{symbol}: {r.status_code} "
-            f"{r.text[:80]}")
+            f"{symbol}: {r.status_code} {r.text[:80]}")
         return ok
     except Exception as e:
-        log(f"❌ Option order error: {e}")
+        log(f"❌ Option error: {e}")
         return False
 
 def close_tradier_option(direction, qty):
-    """Close 0DTE ATM SPY option — sell to close."""
     if not TRADIER_TOKEN or not TRADIER_ACCOUNT:
         return False
     try:
         spy_price = get_current_price() or 560
         symbol    = build_option_symbol(direction, spy_price)
         r = requests.post(
-            f"{TRADIER_BASE}/accounts/"
-            f"{TRADIER_ACCOUNT}/orders",
+            f"{TRADIER_BASE}/accounts/{TRADIER_ACCOUNT}/orders",
             headers={
                 "Authorization": f"Bearer {TRADIER_TOKEN}",
                 "Accept":        "application/json",
@@ -302,8 +288,7 @@ def close_tradier_option(direction, qty):
             timeout=10
         )
         ok = r.status_code == 200
-        log(f"{'✅' if ok else '❌'} "
-            f"Close {symbol}: {r.status_code}")
+        log(f"{'✅' if ok else '❌'} Close {symbol}: {r.status_code}")
         return ok
     except Exception as e:
         log(f"❌ Close error: {e}")
@@ -317,8 +302,7 @@ def send_webhook(url, password, extra, label):
         return False
     try:
         r = requests.post(
-            url,
-            json={"password": password, **extra},
+            url, json={"password": password, **extra},
             timeout=10)
         ok = r.status_code == 200
         log(f"{'✅' if ok else '❌'} {label}: {r.status_code}")
@@ -327,7 +311,7 @@ def send_webhook(url, password, extra, label):
         log(f"❌ {label}: {e}")
         return False
 
-# ── Place order — all pipelines ───────────────────────────────
+# ── Place order ───────────────────────────────────────────────
 
 def place_order(direction):
     qty1 = state.get("p1_qty", P1_QTY)
@@ -338,7 +322,7 @@ def place_order(direction):
         log(f"[SIM] P1 Topstep: "
             f"{'ON' if state.get('p1_enabled', P1_ENABLED) else 'OFF'}"
             f" {qty1}x MES")
-        log(f"[SIM] P2 Tradier options: "
+        log(f"[SIM] P2 Options: "
             f"{'ON' if state.get('p2_enabled', P2_ENABLED) else 'OFF'}"
             f" {qty2}x SPY 0DTE")
         state["p1_status"] = (
@@ -351,7 +335,6 @@ def place_order(direction):
 
     results = []
 
-    # Pipeline 1 — Topstep via TradersPost
     if state.get("p1_enabled", P1_ENABLED):
         ok = send_webhook(P1_URL, P1_PASSWORD, {
             "ticker":   P1_TICKER,
@@ -363,7 +346,6 @@ def place_order(direction):
     else:
         state["p1_status"] = "OFF"
 
-    # Pipeline 2 — Tradier 0DTE options
     if state.get("p2_enabled", P2_ENABLED):
         if P2_URL:
             opt = "call" if direction == "UP" else "put"
@@ -372,8 +354,6 @@ def place_order(direction):
                 "action":      "buy",
                 "option_type": opt,
                 "quantity":    qty2,
-                "expiry":      "0DTE",
-                "strike":      "ATM",
             }, f"P2 {qty2}x SPY {opt.upper()}")
         else:
             ok = place_tradier_option(direction, qty2)
@@ -382,7 +362,6 @@ def place_order(direction):
     else:
         state["p2_status"] = "OFF"
 
-    # Pipeline 3 — future prop firm
     if P3_ENABLED:
         ok = send_webhook(P3_URL, P3_PASSWORD, {
             "ticker":   P3_TICKER,
@@ -393,7 +372,7 @@ def place_order(direction):
 
     return any(results) if results else False
 
-# ── Close order — all pipelines ───────────────────────────────
+# ── Close order ───────────────────────────────────────────────
 
 def close_order(direction):
     qty1 = state.get("p1_qty", P1_QTY)
@@ -403,7 +382,6 @@ def close_order(direction):
         log("[SIM] Close signal sent")
         return True
 
-    # Close Pipeline 1
     if state.get("p1_enabled", P1_ENABLED):
         send_webhook(P1_URL, P1_PASSWORD, {
             "ticker":        P1_TICKER,
@@ -412,7 +390,6 @@ def close_order(direction):
             "closePosition": True,
         }, "P1 Topstep CLOSE")
 
-    # Close Pipeline 2
     if state.get("p2_enabled", P2_ENABLED):
         if P2_URL:
             send_webhook(P2_URL, P2_PASSWORD, {
@@ -423,7 +400,6 @@ def close_order(direction):
         else:
             close_tradier_option(direction, qty2)
 
-    # Close Pipeline 3
     if P3_ENABLED:
         send_webhook(P3_URL, P3_PASSWORD, {
             "ticker":        P3_TICKER,
@@ -442,14 +418,28 @@ def run_bot():
     log(f"ORB Bot started — SIM={SIM_MODE} "
         f"Orders={mode} Data={data}")
     log(f"P1 Topstep: {'ON' if P1_ENABLED else 'OFF'}")
-    log(f"P2 Tradier options: {'ON' if P2_ENABLED else 'OFF'}")
-    log(f"P3 Future: {'ON' if P3_ENABLED else 'OFF'}")
+    log(f"P2 Options: {'ON' if P2_ENABLED else 'OFF'}")
+    log(f"P3 Future:  {'ON' if P3_ENABLED else 'OFF'}")
 
     while True:
-        now = datetime.now(ET)
+        now       = datetime.now(ET)
+        today_str = now.date().isoformat()
 
-        # Midnight reset
-        if now.hour == 0 and now.minute == 0:
+        # ── Time buckets ──────────────────────────────────
+        is_weekend    = now.weekday() >= 5
+        is_midnight   = now.hour == 0 and now.minute == 0
+        is_premarket  = now.hour < 9
+        is_early      = (now.hour == 9 and now.minute < 30)
+        is_range_time = (now.hour == 9 and
+                         30 <= now.minute <= 34)
+        is_trade_time = ((now.hour == 9 and now.minute >= 35)
+                         or now.hour == 10)
+        is_after_noon = now.hour >= 12
+        already_done  = (state["today"] == today_str and
+                         state["phase"] == "done")
+
+        # ── Midnight reset ────────────────────────────────
+        if is_midnight:
             day_pnl = 0.0
             state.update({
                 "phase": "waiting", "high5": None,
@@ -462,29 +452,50 @@ def run_bot():
             time.sleep(61)
             continue
 
-        # Skip weekends
-        if now.weekday() >= 5:
+        # ── Weekend ───────────────────────────────────────
+        if is_weekend:
             state["phase"] = "waiting"
             time.sleep(300)
             continue
 
-        today_str = now.date().isoformat()
-
-        # Already done today
-        if (state["today"] == today_str and
-                state["phase"] == "done"):
+        # ── Already done today ────────────────────────────
+        if already_done:
             time.sleep(60)
             continue
 
-        # Before market
-        if now.hour < 9 or (now.hour == 9 and
-                             now.minute < 30):
+        # ── Pre-market / too early ────────────────────────
+        if is_premarket or is_early:
             state["phase"] = "waiting"
             time.sleep(30)
             continue
 
-        # 9:30-9:34 build range
-        if now.hour == 9 and now.minute < 35:
+        # ── After noon hard stop ──────────────────────────
+        if is_after_noon:
+            if state["phase"] == "active":
+                log("Hard close — noon")
+                close_order(state["direction"])
+                pnl_d   = (state["pnl_pts"] * 5.0 *
+                           state.get("p1_qty", P1_QTY))
+                day_pnl += pnl_d
+                result   = ("WIN" if state["pnl_pts"] > 0
+                            else "LOSS")
+                state.update({
+                    "phase":  "done",
+                    "result": result,
+                    "today":  today_str,
+                })
+                log(f"CLOSED: HARD CLOSE | "
+                    f"{state['pnl_pts']:+.1f}pts | "
+                    f"${pnl_d:+.0f}")
+            else:
+                if state["phase"] != "done":
+                    state["phase"] = "done"
+                    state["today"] = today_str
+            time.sleep(60)
+            continue
+
+        # ── 9:30-9:34 build range ─────────────────────────
+        if is_range_time:
             state["phase"] = "building"
             spy_1m = get_spy_1min()
             h, l   = get_5min_range(spy_1m)
@@ -496,9 +507,18 @@ def run_bot():
             time.sleep(10)
             continue
 
-        # 9:35 — range locked, start watching
-        if (now.hour == 9 and now.minute >= 35 and
-                state["today"] != today_str and
+        # ── ONLY TRADE BETWEEN 9:35 AND 11:00 ────────────
+        # If we somehow get here outside trade time — skip
+        if not is_trade_time:
+            if state["phase"] not in ("active", "done"):
+                state["phase"] = "done"
+                state["today"] = today_str
+                log("Outside trade window — standing down")
+            time.sleep(30)
+            continue
+
+        # ── 9:35 — lock range and start watching ─────────
+        if (state["today"] != today_str and
                 state["phase"] != "active"):
             state["today"] = today_str
             state["phase"] = "watching"
@@ -507,7 +527,7 @@ def run_bot():
                 f"L={state['low5']} "
                 f"Size={state['range_size']}")
 
-        # Watch for breakout
+        # ── Watch for breakout ────────────────────────────
         if state["phase"] == "watching" and state["high5"]:
             if not risk_ok():
                 state["phase"] = "done"
@@ -518,7 +538,7 @@ def run_bot():
                 time.sleep(15)
                 continue
 
-            post      = spy_1m.between_time("09:35", "12:00")
+            post      = spy_1m.between_time("09:35", "11:00")
             direction = None
             for ts, bar in post.iterrows():
                 if float(bar["High"]) > state["high5"]:
@@ -555,7 +575,7 @@ def run_bot():
                         "pnl_pts":    0.0,
                     })
 
-        # Monitor active trade
+        # ── Monitor active trade ──────────────────────────
         if state["phase"] == "active":
             current = get_current_price()
             if current:
@@ -590,8 +610,6 @@ def run_bot():
                         exit_reason = "TARGET"
             if elapsed >= 30:
                 exit_reason = "TIMED EXIT"
-            if now.hour >= 12:
-                exit_reason = "HARD CLOSE"
 
             if exit_reason:
                 close_order(state["direction"])
