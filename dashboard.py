@@ -5,9 +5,10 @@ import pytz
 import time
 
 ET = pytz.timezone("America/New_York")
-from main import (state, STOP_POINTS, TARGET_POINTS,
-                  SIM_MODE, P1_ENABLED, P1_QTY,
-                  P2_ENABLED, P2_QTY)
+
+# ── Compatibility stubs for dashboard.py ─────────────────────
+STOP_POINTS   = float(os.environ.get("STOP_POINTS",   "8.0"))
+TARGET_POINTS = float(os.environ.get("TARGET_POINTS", "20.0"))
 
 st.set_page_config(
     page_title="5-Min NY Open ORB",
