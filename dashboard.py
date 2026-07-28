@@ -6,9 +6,17 @@ import time
 
 ET = pytz.timezone("America/New_York")
 
-# ── Compatibility stubs for dashboard.py ─────────────────────
+from main import state
+import os
+
+# Read settings directly from environment — same source as main.py
 STOP_POINTS   = float(os.environ.get("STOP_POINTS",   "8.0"))
 TARGET_POINTS = float(os.environ.get("TARGET_POINTS", "20.0"))
+SIM_MODE      = os.environ.get("SIM_MODE", "true").lower() == "true"
+P1_ENABLED    = os.environ.get("P1_ENABLED", "true").lower() == "true"
+P1_QTY        = int(os.environ.get("P1_QUANTITY", "1"))
+P2_ENABLED    = os.environ.get("P2_ENABLED", "false").lower() == "true"
+P2_QTY        = int(os.environ.get("P2_QUANTITY", "1"))
 
 st.set_page_config(
     page_title="5-Min NY Open ORB",
