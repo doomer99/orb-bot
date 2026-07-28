@@ -337,7 +337,7 @@ def _get_today_data():
                     times.append(bar["time"])
                 df = pd.DataFrame(rows)
                 df.index = pd.to_datetime(
-                    times, format="%Y-%m-%d %H:%M:%S")
+                    df.index = pd.to_datetime(times, format="mixed")
                 return df
         except Exception as e:
             log(f"  Tradier today error: {e} — trying Yahoo")
