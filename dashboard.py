@@ -12,7 +12,7 @@ ET = pytz.timezone("America/New_York")
 from main import router
 
 st.set_page_config(
-    page_title="Trading Command Center",
+    page_title="Dashboard",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
