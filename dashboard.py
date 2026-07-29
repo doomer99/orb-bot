@@ -1,330 +1,247 @@
+# dashboard.py — Trading Command Center (Streamlit)
+# Run with: streamlit run dashboard.py
+
 import streamlit as st
-import os
+import time
 from datetime import datetime
 import pytz
-import time
 
 ET = pytz.timezone("America/New_York")
 
-from main import state
-import os
-
-# Read settings directly from environment — same source as main.py
-STOP_POINTS   = float(os.environ.get("STOP_POINTS",   "8.0"))
-TARGET_POINTS = float(os.environ.get("TARGET_POINTS", "20.0"))
-SIM_MODE      = os.environ.get("SIM_MODE", "true").lower() == "true"
-P1_ENABLED    = os.environ.get("P1_ENABLED", "true").lower() == "true"
-P1_QTY        = int(os.environ.get("P1_QUANTITY", "1"))
-P2_ENABLED    = os.environ.get("P2_ENABLED", "false").lower() == "true"
-P2_QTY        = int(os.environ.get("P2_QUANTITY", "1"))
+# Import the router from main.py
+from main import router
 
 st.set_page_config(
-    page_title="5-Min NY Open ORB",
+    page_title="Trading Command Center",
     page_icon="📊",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded",
 )
 
-for k, v in [
-    ("p1_on", P1_ENABLED), ("p2_on", P2_ENABLED),
-    ("p1_qty", P1_QTY),    ("p2_qty", P2_QTY),
-    ("p1_balance", 50000), ("p1_streak", 0),
-]:
-    if k not in st.session_state:
-        st.session_state[k] = v
+# ══════════════════════════════════════════════════════════════
+#  STYLING
+# ══════════════════════════════════════════════════════════════
+st.markdown("""
+<style>
+    .block-container {padding-top: 1.5rem; padding-bottom: 1rem;}
+    .metric-card {
+        background: #1e1e2e;
+        border: 1px solid #333;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+    .broker-card {
+        background: #1a1a2e;
+        border: 1px solid #2a2a4a;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+    .strategy-card {
+        background: #1a2e1a;
+        border: 1px solid #2a4a2a;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+    .log-box {
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 8px;
+        padding: 12px;
+        font-family: monospace;
+        font-size: 12px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .status-live {color: #22c55e; font-weight: bold;}
+    .status-off {color: #666;}
+    .status-error {color: #ef4444;}
+    .pnl-pos {color: #22c55e; font-size: 24px; font-weight: bold;}
+    .pnl-neg {color: #ef4444; font-size: 24px; font-weight: bold;}
+</style>
+""", unsafe_allow_html=True)
 
-state["p1_enabled"] = st.session_state.p1_on
-state["p2_enabled"] = st.session_state.p2_on
-state["p1_qty"]     = st.session_state.p1_qty
-state["p2_qty"]     = st.session_state.p2_qty
 
-def rec_contracts(streak):
-    return min(1 + (streak // 10), 12)
+# ══════════════════════════════════════════════════════════════
+#  GET STATE
+# ══════════════════════════════════════════════════════════════
+state = router.get_state()
+now = datetime.now(ET)
 
-def main():
-    now       = datetime.now(ET)
-    phase     = state.get("phase", "waiting")
-    direction = state.get("direction")
-    result    = state.get("result")
-    pnl_pts   = state.get("pnl_pts") or 0.0
-    pnl_d     = pnl_pts * 5.0 * st.session_state.p1_qty
 
-    # ── Header ────────────────────────────────────────────────
-    c1, c2 = st.columns([5, 1])
-    with c1:
-        st.markdown("## 5-Minute New York Open ORB")
-        st.caption(
-            now.strftime("%A %B %d, %Y  ·  %H:%M:%S ET"))
-    with c2:
-        if SIM_MODE:
-            st.warning("SIM")
+# ══════════════════════════════════════════════════════════════
+#  HEADER
+# ══════════════════════════════════════════════════════════════
+col1, col2, col3 = st.columns([3, 1, 1])
+with col1:
+    st.title("📊 Trading Command Center")
+    mode = "🟡 SIM MODE" if state["sim_mode"] else "🟢 LIVE"
+    st.caption(f"{mode} | {now.strftime('%A %B %d, %Y %I:%M %p ET')}")
+with col3:
+    if st.button("🔄 Refresh"):
+        st.rerun()
+
+
+# ══════════════════════════════════════════════════════════════
+#  SIDEBAR — BROKER ACCOUNTS
+# ══════════════════════════════════════════════════════════════
+st.sidebar.header("🏦 Accounts")
+
+for bid, broker in state["brokers"].items():
+    with st.sidebar.container():
+        connected = "🟢" if broker.get("connected") else "🔴"
+        st.sidebar.subheader(f"{connected} {broker.get('name', bid)}")
+
+        if broker.get("connected"):
+            equity = broker.get("equity", 0)
+            day_pnl = broker.get("day_pnl", 0)
+            cash = broker.get("cash", 0)
+
+            c1, c2 = st.sidebar.columns(2)
+            c1.metric("Equity", f"${equity:,.2f}")
+            pnl_color = "🟢" if day_pnl >= 0 else "🔴"
+            c2.metric("Day P&L",
+                      f"${day_pnl:+,.2f}",
+                      delta=f"{pnl_color}")
+            st.sidebar.caption(f"Cash: ${cash:,.2f} | Type: {broker.get('type', '?')}")
+
+            # Positions
+            positions = broker.get("positions", [])
+            if positions:
+                st.sidebar.caption(f"Open positions: {len(positions)}")
+                for p in positions:
+                    st.sidebar.text(
+                        f"  {p['symbol']} {p['quantity']}x "
+                        f"P&L: ${p.get('pnl', 0):+.2f}"
+                    )
         else:
-            st.error("LIVE")
+            err = broker.get("error", "Unknown error")
+            st.sidebar.error(f"Disconnected: {err}")
 
-    st.divider()
+        st.sidebar.divider()
 
-    # ── Signal banner ─────────────────────────────────────────
-    if phase == "waiting":
-        st.markdown("""
-        <div style='background:#1a1f2e;border-radius:8px;
-        padding:20px 24px;text-align:center;
-        border:1px solid #2a3040'>
-        <span style='font-size:28px;color:#4a6080'>
-        ⏳  WAITING</span><br>
-        <span style='color:#3a5060;font-size:14px'>
-        Market opens at 9:30 AM ET</span>
-        </div>""", unsafe_allow_html=True)
+# Quick add broker hint
+st.sidebar.caption(
+    "💡 Add brokers via Railway env vars:\n"
+    "TRADIER_TOKEN, TRADIER_ACCOUNT\n"
+    "P1_WEBHOOK_URL (TradersPost)"
+)
 
-    elif phase == "building":
-        mins = max(0, 35 - now.minute) \
-               if now.hour == 9 else 0
-        st.markdown(f"""
-        <div style='background:#1a1a0a;border-radius:8px;
-        padding:20px 24px;text-align:center;
-        border:1px solid #3a3010'>
-        <span style='font-size:28px;color:#f0a500'>
-        📏  BUILDING RANGE</span><br>
-        <span style='color:#6a5020;font-size:14px'>
-        {mins} minutes until signal</span>
-        </div>""", unsafe_allow_html=True)
 
-    elif phase == "watching":
-        st.markdown("""
-        <div style='background:#1a1a0a;border-radius:8px;
-        padding:20px 24px;text-align:center;
-        border:1px solid #3a3010'>
-        <span style='font-size:28px;color:#f0a500'>
-        👀  WATCHING</span><br>
-        <span style='color:#6a5020;font-size:14px'>
-        Range set — waiting for breakout</span>
-        </div>""", unsafe_allow_html=True)
+# ══════════════════════════════════════════════════════════════
+#  MAIN — STRATEGIES
+# ══════════════════════════════════════════════════════════════
+st.header("⚡ Strategies")
 
-    elif phase == "active" and direction == "UP":
-        st.markdown(f"""
-        <div style='background:#0a1f0f;border-radius:8px;
-        padding:20px 24px;text-align:center;
-        border:2px solid #2ecc71'>
-        <span style='font-size:36px;color:#2ecc71;
-        font-weight:700'>🚀  BUY — LONG</span><br>
-        <span style='color:#1a8a44;font-size:16px'>
-        {pnl_pts:+.1f} pts &nbsp;·&nbsp;
-        ${pnl_d:+,.0f}</span>
-        </div>""", unsafe_allow_html=True)
+strat_cols = st.columns(max(len(state["strategies"]), 1))
 
-    elif phase == "active" and direction == "DOWN":
-        st.markdown(f"""
-        <div style='background:#1f0a0a;border-radius:8px;
-        padding:20px 24px;text-align:center;
-        border:2px solid #ff5252'>
-        <span style='font-size:36px;color:#ff5252;
-        font-weight:700'>🔻  SELL — SHORT</span><br>
-        <span style='color:#8a1a1a;font-size:16px'>
-        {pnl_pts:+.1f} pts &nbsp;·&nbsp;
-        ${pnl_d:+,.0f}</span>
-        </div>""", unsafe_allow_html=True)
+for i, (name, strat) in enumerate(state["strategies"].items()):
+    col = strat_cols[i % len(strat_cols)]
 
-    elif phase == "done":
-        if result == "WIN":
-            st.markdown(f"""
-            <div style='background:#0a1f0f;border-radius:8px;
-            padding:20px 24px;text-align:center;
-            border:2px solid #2ecc71'>
-            <span style='font-size:32px;color:#2ecc71;
-            font-weight:700'>✅  WIN</span><br>
-            <span style='color:#1a8a44;font-size:15px'>
-            {direction} &nbsp;·&nbsp;
-            +{pnl_pts:.1f} pts &nbsp;·&nbsp;
-            ${pnl_d:+,.0f}</span>
-            </div>""", unsafe_allow_html=True)
-        elif result == "LOSS":
-            st.markdown(f"""
-            <div style='background:#1f0a0a;border-radius:8px;
-            padding:20px 24px;text-align:center;
-            border:2px solid #ff5252'>
-            <span style='font-size:32px;color:#ff5252;
-            font-weight:700'>❌  LOSS</span><br>
-            <span style='color:#8a1a1a;font-size:15px'>
-            {direction} &nbsp;·&nbsp;
-            {pnl_pts:.1f} pts &nbsp;·&nbsp;
-            ${pnl_d:+,.0f}</span>
-            </div>""", unsafe_allow_html=True)
+    with col:
+        # Status indicator
+        if strat.get("active_trade"):
+            trade = strat["active_trade"]
+            direction = trade["direction"]
+            arrow = "📈" if direction == "UP" else "📉"
+            st.subheader(f"{arrow} {name}")
+            st.success(
+                f"**{direction}** | {trade['confidence']:.1%} confident\n\n"
+                f"Entry: {trade['entry_time']} | Status: {trade['status']}"
+            )
+        elif strat.get("enabled") and strat.get("ready"):
+            st.subheader(f"✅ {name}")
+            st.info("Ready — waiting for signal window")
+        elif strat.get("enabled"):
+            st.subheader(f"⏳ {name}")
+            st.warning("Enabled but not ready (initializing)")
         else:
-            st.markdown("""
-            <div style='background:#1a1f2e;border-radius:8px;
-            padding:20px 24px;text-align:center;
-            border:1px solid #2a3040'>
-            <span style='font-size:28px;color:#4a6080'>
-            ✓  NO TRADE TODAY</span>
-            </div>""", unsafe_allow_html=True)
+            st.subheader(f"⏸️ {name}")
+            st.caption("Disabled")
 
-    st.markdown("<br>", unsafe_allow_html=True)
+        # Stats
+        stats = strat.get("stats", {})
+        if stats.get("total", 0) > 0:
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Win Rate", f"{stats['win_rate']}%")
+            c2.metric("Trades", stats["total"])
+            c3.metric("Recent P&L", f"{stats['recent_pnl']:+.2f}%")
 
-    # ── Range / trade metrics ─────────────────────────────────
-    high5 = state.get("high5")
-    entry = state.get("entry_idx")
-
-    if entry and phase in ("active", "done"):
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Entry",     f"{entry:.0f}")
-        c2.metric("Stop",      f"{state.get('stop',0):.0f}")
-        c3.metric("Target",    f"{state.get('target',0):.0f}")
-        c4.metric("Live P&L",  f"${pnl_d:+,.0f}")
-    elif high5:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Range High", f"{high5:.2f}")
-        c2.metric("Range Low",
-                  f"{state.get('low5',0):.2f}")
-        c3.metric("Range Size",
-                  f"{state.get('range_size',0):.2f}")
-
-    st.divider()
-
-    # ── Two columns with gap ──────────────────────────────────
-    left, gap, right = st.columns([5, 1, 5])
-
-    # ════════════════════════════════════════
-    # LEFT — TOPSTEP MES FUTURES
-    # ════════════════════════════════════════
-    with left:
-        p1_on   = st.session_state.p1_on
-        status1 = state.get("p1_status", "—")
-        icon1   = "🟢" if p1_on else "⚫"
-
-        st.markdown(
-            f"#### {icon1}  Topstep — MES Futures")
+        # Route info
+        broker_id = strat.get("broker", "none")
+        broker_name = state["brokers"].get(broker_id, {}).get("name", broker_id)
         st.caption(
-            f"{'● ACTIVE' if p1_on else '○ OFF'}"
-            f"  ·  {status1}")
+            f"→ {broker_name} | {strat.get('quantity', 1)}x "
+            f"{strat.get('symbol', 'SPY')}"
+        )
+        st.caption(strat.get("description", ""))
 
-        st.markdown("---")
+        # Last signal
+        last = strat.get("last_signal")
+        if last:
+            st.caption(
+                f"Last signal: {last['direction']} @ "
+                f"{last.get('entry_time', '?')} "
+                f"({last['confidence']:.1%})"
+            )
 
-        c1, c2 = st.columns(2)
-        with c1:
-            bal = st.number_input(
-                "Account size ($)",
-                min_value=0, max_value=500000,
-                value=st.session_state.p1_balance,
-                step=1000, key="p1_bal")
-            st.session_state.p1_balance = bal
-        with c2:
-            streak = st.number_input(
-                "Win streak",
-                min_value=0, max_value=100,
-                value=st.session_state.p1_streak,
-                step=1, key="p1_str")
-            st.session_state.p1_streak = streak
 
-        rec    = rec_contracts(streak)
-        p1_qty = st.slider(
-            "Contracts", 1, 12,
-            st.session_state.p1_qty, key="p1_sl")
-        st.session_state.p1_qty = p1_qty
-        state["p1_qty"]         = p1_qty
+# ══════════════════════════════════════════════════════════════
+#  ACTIVITY LOG
+# ══════════════════════════════════════════════════════════════
+st.header("📋 Activity Log")
 
-        max_loss = p1_qty * 8 * 5
-        dd_pct   = max_loss / 2000 * 100
+log_lines = state.get("log", [])
+if log_lines:
+    log_text = "\n".join(reversed(log_lines[-40:]))
+    st.code(log_text, language=None)
+else:
+    st.caption("No activity yet")
 
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Recommended", f"{rec}c")
-        m2.metric("Max loss",    f"${max_loss:,.0f}")
-        m3.metric("DD limit",    f"{dd_pct:.0f}%")
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        b1, b2 = st.columns(2)
-        with b1:
-            if st.button(
-                    "✅ Use recommended",
-                    key="p1_rec"):
-                st.session_state.p1_qty = rec
-                state["p1_qty"]         = rec
-                st.rerun()
-        with b2:
-            if st.button(
-                    "Turn OFF" if p1_on else "Turn ON",
-                    key="p1_tog"):
-                st.session_state.p1_on = not p1_on
-                state["p1_enabled"]    = not p1_on
-                st.rerun()
-
-    # Gap column — empty, just spacing
-    with gap:
-        st.markdown("")
-
-    # ════════════════════════════════════════
-    # RIGHT — TRADIER OPTIONS
-    # ════════════════════════════════════════
-    with right:
-        p2_on    = st.session_state.p2_on
-        status2  = state.get("p2_status", "—")
-        icon2    = "🟢" if p2_on else "⚫"
-        equity   = state.get("equity",  0.0)
-        cash     = state.get("cash",    0.0)
-        bal_pnl  = state.get("day_pnl", 0.0)
-        sand     = os.environ.get(
-                       "TRADIER_SANDBOX", "true"
-                   ).lower() == "true"
-        acct     = "SANDBOX" if sand else "LIVE"
-        opt_type = "CALL" if (
-            not direction or direction == "UP"
-        ) else "PUT"
-
-        st.markdown(
-            f"#### {icon2}  Tradier Options ({acct})")
-        st.caption(
-            f"{'● ACTIVE' if p2_on else '○ OFF'}"
-            f"  ·  {status2}")
-
-        st.markdown("---")
-
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Equity",  f"${equity:,.0f}")
-        m2.metric("Cash",    f"${cash:,.0f}")
-        m3.metric("Day P&L", f"${bal_pnl:+,.0f}")
-
-        if equity == 0:
-            st.warning(
-                "⚠️ Check TRADIER_TOKEN in Railway")
-
-        p2_qty = st.slider(
-            "Option contracts", 1, 20,
-            st.session_state.p2_qty, key="p2_sl")
-        st.session_state.p2_qty = p2_qty
-        state["p2_qty"]         = p2_qty
-
-        est_risk = p2_qty * 150
-        risk_pct = (
-            est_risk / equity * 100
-        ) if equity > 0 else 0
-
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Est. risk",    f"${est_risk:,.0f}")
-        m2.metric("% of account", f"{risk_pct:.1f}%")
-        m3.metric("Option type",  opt_type)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button(
-                "Turn OFF" if p2_on else "Turn ON",
-                key="p2_tog"):
-            st.session_state.p2_on = not p2_on
-            state["p2_enabled"]    = not p2_on
-            st.rerun()
-
-    st.divider()
-
-    # ── Activity log ───────────────────────────────────────────
-    st.markdown("**Activity log**")
-    logs = state.get("log", ["No activity yet"])
-    for line in reversed(logs[-10:]):
-        st.caption(line)
-
-    st.divider()
+# ══════════════════════════════════════════════════════════════
+#  CONTROLS
+# ══════════════════════════════════════════════════════════════
+with st.expander("⚙️ Controls"):
+    st.subheader("Strategy Toggles")
     st.caption(
-        f"Stop {STOP_POINTS:.0f}pts  ·  "
-        f"Target {TARGET_POINTS:.0f}pts  ·  "
-        f"5-Min NY Open ORB  ·  "
-        f"Updated {state.get('last_update', '—')}")
+        "Strategy enable/disable and routing is controlled via "
+        "Railway environment variables. Set these in your Railway dashboard:"
+    )
+    st.code("""
+# Enable/disable strategies
+ROUTE_NOUR_ENABLED=true
+ROUTE_NOUR_BROKER=tradier_sandbox
+ROUTE_NOUR_QTY=1
+ROUTE_NOUR_SYMBOL=SPY
 
-    time.sleep(20)
+# Future strategies
+ROUTE_STOCHASTIC_ENABLED=false
+ROUTE_STOCHASTIC_BROKER=tradier_sandbox
+ROUTE_TREND_FLIP_ENABLED=false
+ROUTE_TREND_FLIP_BROKER=topstep
+    """)
+
+    st.subheader("Broker Setup")
+    st.code("""
+# Tradier (sandbox or live)
+TRADIER_TOKEN=your_token
+TRADIER_ACCOUNT=your_account_id
+TRADIER_SANDBOX=true
+
+# TradersPost / TopStep
+P1_WEBHOOK_URL=https://traderspost.io/...
+P1_PASSWORD=your_password
+P1_TICKER=MES1!
+    """)
+
+
+# ══════════════════════════════════════════════════════════════
+#  AUTO-REFRESH
+# ══════════════════════════════════════════════════════════════
+# Refresh every 15 seconds during market hours
+if 9 <= now.hour <= 16 and now.weekday() < 5:
+    time.sleep(15)
     st.rerun()
-
-main()
