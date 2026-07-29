@@ -87,7 +87,7 @@ with col3:
 # ══════════════════════════════════════════════════════════════
 #  SIDEBAR — BROKER ACCOUNTS
 # ══════════════════════════════════════════════════════════════
-st.sidebar.header("🏦 Accounts")
+st.sidebar.header("🏦 Broker Accounts")
 
 for bid, broker in state["brokers"].items():
     with st.sidebar.container():
