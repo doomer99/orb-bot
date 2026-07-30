@@ -132,7 +132,7 @@ class TradierBroker(BaseBroker):
         if expiration is None:
             expiration = datetime.now(ET).strftime("%y%m%d")
         cp = "C" if direction == "UP" else "P"
-        return f"SPY{expiration}{cp}{int(strike):08d}"
+        return f"SPY{expiration}{cp}{int(strike * 1000):08d}"
 
     def place_order(self, direction: str, symbol: str = "SPY",
                     quantity: int = 1, **kwargs) -> OrderResult:
