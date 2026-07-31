@@ -189,7 +189,7 @@ class TradierBroker(BaseBroker):
         except Exception as e:
             return OrderResult(False, message=str(e))
 
-def close_position(self, symbol: str = "SPY", **kwargs) -> OrderResult:
+    def close_position(self, symbol: str = "SPY", **kwargs) -> OrderResult:
         """Close the open option position."""
         occ = self._open_positions.get(symbol) or kwargs.get("occ_symbol")
         if not occ:
