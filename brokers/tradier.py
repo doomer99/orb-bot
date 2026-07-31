@@ -189,34 +189,38 @@ class TradierBroker(BaseBroker):
         except Exception as e:
             return OrderResult(False, message=str(e))
 
-    def close_position(self, symbol: str = "SPY", **kwargs) -> OrderResult:
-        """Close the open option position."""
-        occ = self._open_positions.get(symbol) or kwargs.get("occ_symbol")
-        if not occ:
-            return OrderResult(False, message="No open position to close")
+   def close_position(self, symbol: str = "SPY", **kwargs) -> OrderResult:
+    occ = self._open_positions.get(symbol) or kwargs.get("occ_symbol")
+    if not occ:
+        return OrderResult(False, message="No open position to close")
+    try:
+        qty = kwargs.get("quantity", 1)
+        r = requests.post(
+            f"{self.base_url}/accounts/{self.account_id}/orders",
+            headers=self._headers,
+            data={
+                "class": "option",
+                "symbol": symbol,
+                "option_symbol": occ,
+                "side": "sell_to_close",
+                "quantity": str(qty),
+                "type": "market",
+                "duration": "day",
+            },
+            timeout=10,
+        )
+        resp = r.json()
+        order = resp.get("order", {})
+        order_id = order.get("id")
+        status = order.get("status", "")
 
-        try:
-            qty = kwargs.get("quantity", 1)
-            r = requests.post(
-                f"{self.base_url}/accounts/{self.account_id}/orders",
-                headers=self._headers,
-                data={
-                    "class": "option",
-                    "symbol": symbol,
-                    "option_symbol": occ,
-                    "side": "sell_to_close",
-                    "quantity": str(qty),
-                    "type": "market",
-                    "duration": "day",
-                },
-                timeout=10,
-            )
-
-            resp = r.json()
-            ok = r.status_code == 200
-            if ok:
-                self._open_positions.pop(symbol, None)
-            return OrderResult(ok, message=str(resp))
-
-        except Exception as e:
-            return OrderResult(False, message=str(e))
+        # Tradier returns 200 even on rejections — check the actual status
+        if r.status_code == 200 and order_id and status != "rejected":
+            # Don't pop yet — verify fill
+            self._open_positions.pop(symbol, None)
+            return OrderResult(True, order_id=str(order_id), message=str(resp))
+        else:
+            reason = resp.get("errors", resp)
+            return OrderResult(False, message=f"Rejected: {reason}")
+    except Exception as e:
+        return OrderResult(False, message=str(e))
