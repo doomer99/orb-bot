@@ -6,3 +6,5 @@ requests>=2.31.0
 pytz>=2023.3
 yfinance>=0.2.30
 polygon-api-client>=1.12.0
+fastapi
+uvicorn
