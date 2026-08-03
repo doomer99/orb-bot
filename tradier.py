@@ -35,6 +35,15 @@ class TradierBroker(BaseBroker):
         # Track open positions for closing
         self._open_positions = {}  # symbol -> occ_symbol
 
+    def _safe_json(self, r):
+        """Parse JSON safely — returns (dict, error_string)."""
+        if not r.text.strip():
+            return None, f"HTTP {r.status_code}: empty response"
+        try:
+            return r.json(), None
+        except Exception:
+            return None, f"HTTP {r.status_code}: {r.text[:200]}"
+
     def connect(self) -> bool:
         """Test connection by fetching profile."""
         if not self.token or not self.account_id:
@@ -71,20 +80,20 @@ class TradierBroker(BaseBroker):
                 f"{self.base_url}/accounts/{self.account_id}/balances",
                 headers=self._headers, timeout=8
             )
-            if r.status_code == 200:
-                data = r.json().get("balances", {})
-                info.equity = float(data.get("total_equity", 0))
+            data, err = self._safe_json(r)
+            if data and r.status_code == 200:
+                bal = data.get("balances", {})
+                info.equity = float(bal.get("total_equity", 0))
                 info.cash = float(
-                    data.get("cash", {}).get("cash_available", 0)
-                    or data.get("cash_available", 0) or 0
+                    bal.get("cash", {}).get("cash_available", 0)
+                    or bal.get("cash_available", 0) or 0
                 )
                 info.buying_power = float(
-                    data.get("buying_power", 0) or 0
+                    bal.get("buying_power", 0) or 0
                 )
-                # Day P&L — may be nested
                 info.day_pnl = float(
-                    data.get("pnl", {}).get("day", 0)
-                    or data.get("day_pnl", 0) or 0
+                    bal.get("pnl", {}).get("day", 0)
+                    or bal.get("day_pnl", 0) or 0
                 )
                 info.connected = True
 
@@ -93,8 +102,9 @@ class TradierBroker(BaseBroker):
                 f"{self.base_url}/accounts/{self.account_id}/positions",
                 headers=self._headers, timeout=8
             )
-            if r2.status_code == 200:
-                pos_data = r2.json().get("positions", {})
+            data2, err2 = self._safe_json(r2)
+            if data2 and r2.status_code == 200:
+                pos_data = data2.get("positions", {})
                 if pos_data and pos_data != "null":
                     positions = pos_data.get("position", [])
                     if isinstance(positions, dict):
@@ -122,7 +132,10 @@ class TradierBroker(BaseBroker):
                 headers=self._headers,
                 params={"symbols": "SPY"}, timeout=5
             )
-            return float(r.json()["quotes"]["quote"].get("last", 0))
+            data, err = self._safe_json(r)
+            if not data:
+                return 0.0
+            return float(data["quotes"]["quote"].get("last", 0))
         except:
             return 0.0
 
@@ -132,7 +145,7 @@ class TradierBroker(BaseBroker):
         if expiration is None:
             expiration = datetime.now(ET).strftime("%y%m%d")
         cp = "C" if direction == "UP" else "P"
-        return f"SPY{expiration}{cp}{int(strike):08d}"
+        return f"SPY{expiration}{cp}{int(strike * 1000):08d}"
 
     def place_order(self, direction: str, symbol: str = "SPY",
                     quantity: int = 1, **kwargs) -> OrderResult:
@@ -172,7 +185,11 @@ class TradierBroker(BaseBroker):
                 timeout=10,
             )
 
-            resp = r.json()
+            # Safe JSON parse
+            resp, err = self._safe_json(r)
+            if not resp:
+                return OrderResult(False, message=err)
+
             order_id = resp.get("order", {}).get("id")
 
             if r.status_code == 200 and order_id:
@@ -194,7 +211,6 @@ class TradierBroker(BaseBroker):
         occ = self._open_positions.get(symbol) or kwargs.get("occ_symbol")
         if not occ:
             return OrderResult(False, message="No open position to close")
-
         try:
             qty = kwargs.get("quantity", 1)
             r = requests.post(
@@ -212,11 +228,19 @@ class TradierBroker(BaseBroker):
                 timeout=10,
             )
 
-            resp = r.json()
-            ok = r.status_code == 200
-            if ok:
-                self._open_positions.pop(symbol, None)
-            return OrderResult(ok, message=str(resp))
+            # Safe JSON parse
+            resp, err = self._safe_json(r)
+            if not resp:
+                return OrderResult(False, message=err)
 
+            order = resp.get("order", {})
+            order_id = order.get("id")
+            status = order.get("status", "")
+            if r.status_code == 200 and order_id and status != "rejected":
+                self._open_positions.pop(symbol, None)
+                return OrderResult(True, order_id=str(order_id), message=str(resp))
+            else:
+                reason = resp.get("errors", resp)
+                return OrderResult(False, message=f"Rejected: {reason}")
         except Exception as e:
             return OrderResult(False, message=str(e))
