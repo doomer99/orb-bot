@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Broadbent Capital</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'JetBrains Mono', monospace; background: #0d0d14; color: #ccc; font-size: 11px; }
+
+/* Top bar */
+.top-bar { display: flex; align-items: center; justify-content: space-between; padding: 6px 14px; background: #12121e; border-bottom: 1px solid #252530; }
+.top-left { display: flex; align-items: center; gap: 16px; }
+.brand { font-size: 13px; font-weight: 700; color: #e0e0e0; letter-spacing: 1px; }
+.sep { color: #333; }
+.live { color: #4ade80; font-size: 11px; }
+.sim { color: #fbbf24; font-size: 11px; }
+.clock { color: #555; font-size: 11px; }
+.halt-btn { padding: 4px 12px; font-size: 10px; font-family: 'JetBrains Mono', monospace; background: #2a1515; color: #f87171; border: 1px solid #4a2020; border-radius: 4px; cursor: pointer; font-weight: 500; }
+.halt-btn:hover { background: #3a2020; }
+.resume-btn { padding: 4px 12px; font-size: 10px; font-family: 'JetBrains Mono', monospace; background: #152a15; color: #4ade80; border: 1px solid #204a20; border-radius: 4px; cursor: pointer; font-weight: 500; }
+
+/* Metrics */
+.metrics { display: grid; grid-template-columns: repeat(6, 1fr); margin-bottom: 14px; }
+.m-cell { padding: 10px 14px; background: #12121e; border-right: 1px solid #1e1e2e; border-bottom: 1px solid #1e1e2e; }
+.m-cell:last-child { border-right: none; }
+.m-lbl { font-size: 10px; color: #555; letter-spacing: 0.5px; margin-bottom: 2px; }
+.m-val { font-size: 17px; font-weight: 500; color: #e0e0e0; }
+.grn { color: #4ade80 !important; }
+.red { color: #f87171 !important; }
+.ylw { color: #fbbf24 !important; }
+.mut { color: #555 !important; }
+
+/* Layout */
+.layout { display: grid; grid-template-columns: 210px 1fr; gap: 14px; padding: 0 14px 14px; }
+
+/* Sidebar */
+.sidebar { display: flex; flex-direction: column; gap: 12px; }
+.panel { background: #12121e; border: 1px solid #1e1e2e; border-radius: 4px; overflow: hidden; }
+.panel-hdr { padding: 6px 10px; border-bottom: 1px solid #1e1e2e; display: flex; justify-content: space-between; align-items: center; }
+.panel-ttl { font-size: 11px; font-weight: 500; color: #e0e0e0; letter-spacing: 0.5px; }
+.new-btn { font-size: 9px; font-family: 'JetBrains Mono', monospace; padding: 2px 7px; background: #0d0d14; color: #60a5fa; border: 1px solid #1e3a5f; border-radius: 3px; cursor: pointer; }
+.new-btn:hover { background: #1e1e2e; }
+
+/* Book cards */
+.bk { padding: 7px 10px; border-bottom: 1px solid #1a1a28; font-size: 11px; }
+.bk-on { border-left: 3px solid #4ade80; }
+.bk-off { border-left: 3px solid transparent; }
+.bk-nm { font-weight: 500; color: #e0e0e0; }
+.bk-mt { font-size: 10px; color: #555; margin-top: 2px; }
+.bk-row { display: flex; justify-content: space-between; align-items: center; }
+.tag { font-size: 9px; padding: 1px 5px; border-radius: 3px; display: inline-block; margin-right: 3px; margin-top: 4px; }
+.tag-a { background: #1e3a5f; color: #60a5fa; }
+.tag-d { background: #1a1a28; color: #888; }
+
+/* Config rows */
+.cfg-hdr { padding: 5px 10px; border-bottom: 1px solid #1e1e2e; }
+.cfg-ttl { font-size: 10px; font-weight: 500; color: #555; letter-spacing: 0.5px; }
+.cfg-row { display: flex; justify-content: space-between; padding: 3px 10px; font-size: 10px; }
+
+/* Drawdown */
+.dd-bar { height: 6px; background: #1a1a28; border-radius: 3px; overflow: hidden; margin: 5px 0 3px; }
+.dd-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+/* Action buttons */
+.act-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.act-btn { padding: 2px 7px; font-size: 9px; font-family: 'JetBrains Mono', monospace; background: #12121e; color: #555; border: 1px solid #1e1e2e; border-radius: 3px; cursor: pointer; }
+.act-btn:hover { color: #888; border-color: #333; }
+
+/* Main content */
+.main { display: flex; flex-direction: column; gap: 14px; }
+.section { background: #12121e; border: 1px solid #1e1e2e; border-radius: 4px; overflow: hidden; }
+.sec-hdr { padding: 6px 10px; border-bottom: 1px solid #1e1e2e; display: flex; justify-content: space-between; align-items: center; }
+.sec-ttl { font-size: 11px; font-weight: 500; color: #e0e0e0; letter-spacing: 0.5px; }
+.sec-sum { font-size: 10px; color: #4ade80; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 4px 10px; color: #555; font-weight: 500; font-size: 10px; border-bottom: 1px solid #1e1e2e; }
+td { padding: 6px 10px; color: #bbb; border-bottom: 1px solid #151520; }
+.r { text-align: right; }
+.empty-row { text-align: center; color: #444; padding: 16px 10px !important; }
+
+/* Log */
+.log-wrap { padding: 8px 10px; }
+.log-l { line-height: 1.8; color: #666; }
+.log-ok { color: #4ade80; }
+.log-sg { color: #fbbf24; }
+.log-er { color: #f87171; }
+
+/* Toggle */
+.toggle { width: 28px; height: 16px; border-radius: 99px; position: relative; cursor: pointer; border: none; }
+.toggle-on { background: #1e3a5f; }
+.toggle-off { background: #252530; }
+.toggle-dot { width: 12px; height: 12px; background: #e0e0e0; border-radius: 50%; position: absolute; top: 2px; transition: left 0.15s; }
+.toggle-on .toggle-dot { left: 14px; background: #60a5fa; }
+.toggle-off .toggle-dot { left: 2px; background: #555; }
+
+/* Wizard overlay */
+.wizard { background: #12121e; border: 1px solid #1e1e2e; border-radius: 4px; padding: 16px; }
+.wiz-ttl { font-size: 13px; font-weight: 500; color: #e0e0e0; margin-bottom: 14px; letter-spacing: 0.5px; }
+.wiz-step { font-size: 10px; color: #60a5fa; letter-spacing: 0.5px; margin-bottom: 5px; margin-top: 12px; }
+.wiz-input { width: 100%; font-size: 11px; font-family: 'JetBrains Mono', monospace; padding: 6px 8px; background: #0d0d14; color: #e0e0e0; border: 1px solid #252530; border-radius: 4px; margin-bottom: 4px; }
+.wiz-input:focus { outline: none; border-color: #1e3a5f; }
+.wiz-option { border: 1px solid #1e1e2e; border-radius: 6px; padding: 12px; cursor: pointer; margin-bottom: 6px; }
+.wiz-option:hover { border-color: #333; background: #151520; }
+.wiz-option-ttl { font-size: 12px; font-weight: 500; color: #e0e0e0; margin-bottom: 3px; }
+.wiz-option-desc { font-size: 10px; color: #888; }
+.wiz-check { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid #1a1a28; cursor: pointer; font-size: 11px; }
+.wiz-check:last-child { border-bottom: none; }
+.wiz-btn { width: 100%; padding: 8px; font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 500; background: #1e3a5f; color: #60a5fa; border: 1px solid #2a4a6f; border-radius: 4px; cursor: pointer; margin-top: 12px; }
+.wiz-btn:hover { background: #2a4a6f; }
+.wiz-cancel { width: 100%; padding: 8px; font-size: 11px; font-family: 'JetBrains Mono', monospace; background: transparent; color: #555; border: 1px solid #252530; border-radius: 4px; cursor: pointer; margin-top: 4px; }
+
+/* Circuit breaker banner */
+.cb-banner { padding: 8px 14px; background: #2a1515; color: #f87171; font-size: 11px; border-bottom: 1px solid #4a2020; display: none; }
+
+/* Spacer */
+.spacer { flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="top-bar">
+  <div class="top-left">
+    <span class="brand">BROADBENT CAPITAL</span>
+    <span class="sep">|</span>
+    <span id="mode-badge" class="live">LIVE</span>
+    <span class="sep">|</span>
+    <span id="clock" class="clock"></span>
+  </div>
+  <div>
+    <button id="halt-btn" class="halt-btn" onclick="toggleCircuitBreaker()">HALT</button>
+  </div>
+</div>
+
+<div id="cb-banner" class="cb-banner">CIRCUIT BREAKER ACTIVE — all trading halted</div>
+
+<!-- Metrics -->
+<div class="metrics" id="metrics"></div>
+
+<!-- Layout -->
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="panel">
+      <div class="panel-hdr">
+        <span class="panel-ttl">BOOKS</span>
+        <button class="new-btn" onclick="showWizard()">+ NEW</button>
+      </div>
+      <div id="books-list"></div>
+    </div>
+
+    <div style="padding: 0 4px;">
+      <div class="cfg-ttl" style="margin-bottom: 2px;">DRAWDOWN</div>
+      <div class="dd-bar"><div id="dd-fill" class="dd-fill" style="width: 0%;"></div></div>
+      <div style="display: flex; justify-content: space-between; font-size: 10px;">
+        <span id="dd-used" style="color: #888;">$0</span>
+        <span id="dd-limit" style="color: #555;">$4,500</span>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="panel">
+      <div class="cfg-hdr"><span class="cfg-ttl">STRATEGIES</span></div>
+      <div id="strat-list"></div>
+    </div>
+
+    <div class="panel">
+      <div class="cfg-hdr"><span class="cfg-ttl">CONNECTIONS</span></div>
+      <div id="conn-list"></div>
+    </div>
+
+    <div class="act-row">
+      <button class="act-btn" onclick="fetch('/api/circuit-breaker/activate',{method:'POST'}).then(poll)">close all</button>
+      <button class="act-btn">disable all</button>
+      <button class="act-btn">export</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main" id="main-content">
+    <div id="view-trades">
+      <div class="section">
+        <div class="sec-hdr">
+          <span class="sec-ttl">OPEN POSITIONS</span>
+          <span class="sec-sum" id="open-sum">0 active</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>STRATEGY</th><th>BOOK</th><th>SYMBOL</th>
+            <th class="r">QTY</th><th>DIR</th><th class="r">CONF</th><th class="r">ENTRY</th>
+          </tr></thead>
+          <tbody id="open-body">
+            <tr><td colspan="7" class="empty-row">No open positions</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="section">
+        <div class="sec-hdr">
+          <span class="sec-ttl">CLOSED</span>
+          <span class="sec-sum" id="closed-sum">0 today</span>
+        </div>
+        <div id="closed-body" style="padding: 12px 10px; color: #444; text-align: center;">No closed trades today</div>
+      </div>
+
+      <div class="section">
+        <div class="sec-hdr"><span class="sec-ttl">SYSTEM</span></div>
+        <div class="log-wrap" id="log-body"></div>
+      </div>
+    </div>
+
+    <div id="view-wizard" style="display: none;"></div>
+  </div>
+</div>
+
+<script>
+let STATE = {};
+
+function updateClock() {
+  const now = new Date();
+  const et = now.toLocaleString('en-US', {timeZone: 'America/New_York', hour12: false,
+    month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'});
+  document.getElementById('clock').textContent = et + ' ET';
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+async function poll() {
+  try {
+    const r = await fetch('/api/state');
+    STATE = await r.json();
+    render(STATE);
+  } catch(e) { console.error('Poll error:', e); }
+}
+
+function render(s) {
+  // Mode
+  const badge = document.getElementById('mode-badge');
+  badge.textContent = s.sim_mode ? 'SIM' : 'LIVE';
+  badge.className = s.sim_mode ? 'ylw' : 'live';
+
+  // Circuit breaker
+  const cb = document.getElementById('cb-banner');
+  const hb = document.getElementById('halt-btn');
+  if (s.circuit_breaker) {
+    cb.style.display = 'block';
+    hb.textContent = 'RESUME';
+    hb.className = 'resume-btn';
+  } else {
+    cb.style.display = 'none';
+    hb.textContent = 'HALT';
+    hb.className = 'halt-btn';
+  }
+
+  // Metrics
+  const brokers = Object.values(s.brokers || {});
+  const equity = brokers.reduce((a, b) => a + (b.connected ? (b.equity || 0) : 0), 0);
+  const dayPnl = brokers.reduce((a, b) => a + (b.connected ? (b.day_pnl || 0) : 0), 0);
+  const openCount = Object.values(s.active_trades || {}).filter(t => t.status === 'OPEN' || t.status === 'SIM').length;
+  const stratOn = Object.values(s.strategies || {}).filter(st => st.enabled).length;
+  const bookCount = Object.keys(s.portfolios || {}).length + Object.keys(s.allocations || {}).length;
+  const signals = (s.log || []).filter(l => l.toLowerCase().includes('signal')).length;
+  const pc = dayPnl >= 0 ? 'grn' : 'red';
+
+  document.getElementById('metrics').innerHTML = `
+    <div class="m-cell"><div class="m-lbl">NAV</div><div class="m-val">$${equity.toLocaleString()}</div></div>
+    <div class="m-cell"><div class="m-lbl">DAY P&L</div><div class="m-val ${pc}">$${dayPnl >= 0 ? '+' : ''}${dayPnl.toFixed(2)}</div></div>
+    <div class="m-cell"><div class="m-lbl">OPEN POS</div><div class="m-val">${openCount}</div></div>
+    <div class="m-cell"><div class="m-lbl">STRATEGIES</div><div class="m-val">${stratOn}</div></div>
+    <div class="m-cell"><div class="m-lbl">BOOKS</div><div class="m-val">${bookCount}</div></div>
+    <div class="m-cell"><div class="m-lbl">SIGNALS TODAY</div><div class="m-val">${signals}</div></div>
+  `;
+
+  // Books
+  let bhtml = '';
+  for (const [pn, pf] of Object.entries(s.portfolios || {})) {
+    const tags = pf.sizing_mode === 'risk_parity'
+      ? '<span class="tag tag-a">AUTO-BAL</span>' : '';
+    bhtml += `<div class="bk bk-on">
+      <div class="bk-row"><span class="bk-nm">${pn}</span></div>
+      <div class="bk-mt">${pf.broker}</div>
+      <div>${tags}<span class="tag tag-d">${pf.sizing_mode.toUpperCase().slice(0,6)}</span><span class="tag tag-d">${pf.risk_pct}%</span></div>
+      <div class="bk-row" style="margin-top:3px;font-size:10px;"><span style="color:#888;">${(pf.strategies||[]).length} strats</span></div>
+    </div>`;
+  }
+  for (const [an, al] of Object.entries(s.allocations || {})) {
+    const act = s.active_trades && s.active_trades[an];
+    const cls = act ? 'bk-on' : 'bk-off';
+    bhtml += `<div class="bk ${cls}">
+      <div class="bk-nm">${an}</div>
+      <div class="bk-mt">${al.broker}</div>
+      <div><span class="tag tag-d">SOLO</span><span class="tag tag-d">${al.allocation_pct}%</span><span class="tag tag-d">${al.quantity}x ${al.symbol}</span></div>
+    </div>`;
+  }
+  // Unbooked strategies
+  const booked = new Set();
+  for (const pf of Object.values(s.portfolios || {})) (pf.strategies || []).forEach(x => booked.add(x));
+  for (const an of Object.keys(s.allocations || {})) booked.add(an);
+  for (const [sn, sr] of Object.entries(s.strategies || {})) {
+    if (booked.has(sn)) continue;
+    const act = s.active_trades && s.active_trades[sn];
+    const cls = act ? 'bk-on' : 'bk-off';
+    const onoff = sr.enabled ? '<span style="color:#4ade80;">ON</span>' : '<span style="color:#555;">OFF</span>';
+    bhtml += `<div class="bk ${cls}"><div class="bk-row"><span class="bk-nm">${sn}</span>${onoff}</div><div class="bk-mt">${sr.broker || 'none'}</div></div>`;
+  }
+  document.getElementById('books-list').innerHTML = bhtml;
+
+  // Drawdown
+  const ddUsed = Math.abs(Math.min(0, dayPnl));
+  const ddLimit = 4500;
+  const ddPct = Math.min(100, ddUsed / ddLimit * 100);
+  const ddClr = ddPct < 50 ? '#4ade80' : (ddPct < 80 ? '#fbbf24' : '#f87171');
+  document.getElementById('dd-fill').style.width = ddPct + '%';
+  document.getElementById('dd-fill').style.background = ddClr;
+  document.getElementById('dd-used').textContent = '$' + ddUsed.toLocaleString();
+  document.getElementById('dd-limit').textContent = '$' + ddLimit.toLocaleString();
+
+  // Strategies
+  let shtml = '';
+  for (const [sn, sr] of Object.entries(s.strategies || {})) {
+    const wr = sr.stats ? sr.stats.win_rate || 0 : 0;
+    const c = sr.enabled ? '#bbb' : '#555';
+    shtml += `<div class="cfg-row"><span style="color:${c};">${sn}</span><span style="color:#555;">${wr}%</span></div>`;
+  }
+  document.getElementById('strat-list').innerHTML = shtml;
+
+  // Connections
+  let chtml = '';
+  for (const [bid, br] of Object.entries(s.brokers || {})) {
+    const dot = br.connected ? '#4ade80' : '#555';
+    const eq = br.equity > 0 ? '$' + Math.round(br.equity/1000) + 'k' : 'OFF';
+    const tc = br.connected ? '#bbb' : '#555';
+    chtml += `<div class="cfg-row"><div style="display:flex;align-items:center;gap:5px;"><div style="width:5px;height:5px;border-radius:50%;background:${dot};"></div><span style="color:${tc};">${br.name || bid}</span></div><span style="color:#555;">${eq}</span></div>`;
+  }
+  document.getElementById('conn-list').innerHTML = chtml;
+
+  // Open positions
+  const openTrades = Object.entries(s.active_trades || {}).filter(([k,v]) => v.status === 'OPEN' || v.status === 'SIM');
+  document.getElementById('open-sum').textContent = openTrades.length + ' active';
+  let ohtml = '';
+  if (openTrades.length === 0) {
+    ohtml = '<tr><td colspan="7" class="empty-row">No open positions</td></tr>';
+  } else {
+    for (const [tn, tr] of openTrades) {
+      const dc = (tr.direction === 'UP' || tr.direction === 'LONG') ? 'grn' : 'red';
+      let book = 'Direct';
+      for (const [pn, pf] of Object.entries(s.portfolios || {})) {
+        if ((pf.strategies || []).includes(tn)) { book = pn.slice(0, 12); break; }
+      }
+      const sr2 = s.strategies[tn] || {};
+      const at = sr2.active_trade || {};
+      const conf = at.confidence ? (at.confidence * 100).toFixed(1) + '%' : '—';
+      const entry = at.entry_time || '—';
+      const sym = tr.symbol || 'SPY';
+      ohtml += `<tr><td>${tn}</td><td class="mut">${book}</td><td class="mut">${sym}</td><td class="r">—</td><td class="${dc}">${tr.direction}</td><td class="r mut">${conf}</td><td class="r mut">${entry}</td></tr>`;
+    }
+  }
+  document.getElementById('open-body').innerHTML = ohtml;
+
+  // Closed
+  const closedLines = (s.log || []).filter(l => l.toLowerCase().includes('closed'));
+  document.getElementById('closed-sum').textContent = closedLines.length + ' today';
+  if (closedLines.length > 0) {
+    document.getElementById('closed-body').innerHTML = closedLines.slice(-10).reverse().map(l =>
+      `<div style="padding:3px 10px;font-size:11px;color:#888;">${l}</div>`).join('');
+  } else {
+    document.getElementById('closed-body').innerHTML = '<div style="padding:12px;text-align:center;color:#444;">No closed trades today</div>';
+  }
+
+  // Log
+  const logs = (s.log || []).slice(-20).reverse();
+  let lhtml = '';
+  for (const line of logs) {
+    if (line.toLowerCase().includes('filled') || line.includes('FILL')) {
+      lhtml += `<div class="log-l"><span class="log-ok">FILL</span> ${esc(line)}</div>`;
+    } else if (line.toLowerCase().includes('signal')) {
+      lhtml += `<div class="log-l"><span class="log-sg">SGNL</span> ${esc(line)}</div>`;
+    } else if (line.toLowerCase().includes('failed') || line.toLowerCase().includes('error')) {
+      lhtml += `<div class="log-l"><span class="log-er">ERR</span> ${esc(line)}</div>`;
+    } else {
+      lhtml += `<div class="log-l">${esc(line)}</div>`;
+    }
+  }
+  if (logs.length === 0) lhtml = '<div class="log-l" style="color:#444;">No activity yet</div>';
+  document.getElementById('log-body').innerHTML = lhtml;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function toggleCircuitBreaker() {
+  const url = STATE.circuit_breaker ? '/api/circuit-breaker/deactivate' : '/api/circuit-breaker/activate';
+  fetch(url, {method: 'POST'}).then(() => poll());
+}
+
+function showWizard() {
+  document.getElementById('view-trades').style.display = 'none';
+  const wiz = document.getElementById('view-wizard');
+  wiz.style.display = 'block';
+  wiz.innerHTML = `
+    <div class="wizard">
+      <div class="wiz-ttl">NEW BOOK</div>
+      <div class="wiz-step">WHAT DO YOU WANT TO SET UP?</div>
+      <div class="wiz-option" onclick="showSoloForm()">
+        <div class="wiz-option-ttl">Single strategy</div>
+        <div class="wiz-option-desc">One strategy, one account, set your risk allocation.</div>
+        <div style="margin-top:6px;"><span class="tag tag-d">SOLO</span><span class="tag tag-d">FIXED QTY</span><span class="tag tag-d">10-100% ALLOC</span></div>
+      </div>
+      <div class="wiz-option" onclick="showPortfolioForm()">
+        <div class="wiz-option-ttl">Portfolio</div>
+        <div class="wiz-option-desc">Multiple strategies, one account. Auto-balances position sizes across assets.</div>
+        <div style="margin-top:6px;"><span class="tag tag-a">AUTO-BAL</span><span class="tag tag-d">RISK PARITY</span><span class="tag tag-d">MULTI-ASSET</span></div>
+      </div>
+      <button class="wiz-cancel" onclick="hideWizard()">CANCEL</button>
+    </div>
+  `;
+}
+
+function hideWizard() {
+  document.getElementById('view-wizard').style.display = 'none';
+  document.getElementById('view-trades').style.display = 'block';
+}
+
+function showSoloForm() {
+  const strats = Object.keys(STATE.strategies || {});
+  const brokers = Object.entries(STATE.brokers || {});
+  const syms = ['SPY','QQQ','TSLA','NVDA','AAPL','AMZN','GOOGL','META','MSFT','GLD','MES1!','MNQ1!'];
+  const wiz = document.getElementById('view-wizard');
+  wiz.innerHTML = `
+    <div class="wizard">
+      <div class="wiz-ttl">SINGLE STRATEGY</div>
+      <div class="wiz-step">STRATEGY</div>
+      <select id="w-strat" class="wiz-input">${strats.map(s => `<option>${s}</option>`).join('')}</select>
+      <div class="wiz-step">ACCOUNT</div>
+      <select id="w-broker" class="wiz-input">${brokers.map(([id,b]) => `<option value="${id}">${b.name || id}</option>`).join('')}</select>
+      <div class="wiz-step">SYMBOL</div>
+      <select id="w-sym" class="wiz-input">${syms.map(s => `<option>${s}</option>`).join('')}</select>
+      <div class="wiz-step">QUANTITY</div>
+      <input id="w-qty" type="number" value="1" min="1" class="wiz-input" style="width:80px;">
+      <div class="wiz-step">ALLOCATION</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input id="w-alloc" type="range" min="10" max="100" step="10" value="100" style="flex:1;" oninput="document.getElementById('w-alloc-v').textContent=this.value+'%'">
+        <span id="w-alloc-v" style="min-width:40px;text-align:right;color:#e0e0e0;">100%</span>
+      </div>
+      <button class="wiz-btn" onclick="createSolo()">CREATE</button>
+      <button class="wiz-cancel" onclick="showWizard()">BACK</button>
+    </div>
+  `;
+}
+
+function showPortfolioForm() {
+  const strats = Object.entries(STATE.strategies || {});
+  const brokers = Object.entries(STATE.brokers || {});
+  const wiz = document.getElementById('view-wizard');
+  wiz.innerHTML = `
+    <div class="wizard">
+      <div class="wiz-ttl">PORTFOLIO</div>
+      <div class="wiz-step">NAME</div>
+      <input id="p-name" type="text" placeholder="e.g. Morning Scalps" class="wiz-input">
+      <div class="wiz-step">ACCOUNT</div>
+      <select id="p-broker" class="wiz-input">${brokers.map(([id,b]) => `<option value="${id}">${b.name || id}</option>`).join('')}</select>
+      <div class="wiz-step">STRATEGIES</div>
+      <div style="border:1px solid #1e1e2e;border-radius:4px;overflow:hidden;">
+        ${strats.map(([sn, sr]) => {
+          const wr = sr.stats ? sr.stats.win_rate || 0 : 0;
+          return `<label class="wiz-check"><input type="checkbox" value="${sn}" class="p-strat-cb"><span>${sn}</span><span style="margin-left:auto;color:#555;">${wr}%</span></label>`;
+        }).join('')}
+      </div>
+      <div class="wiz-step">SIZING</div>
+      <select id="p-sizing" class="wiz-input">
+        <option value="risk_parity">Risk parity (auto-balance)</option>
+        <option value="equal_contracts">Equal contracts</option>
+        <option value="weighted">Win rate weighted</option>
+        <option value="manual">Manual</option>
+      </select>
+      <div class="wiz-step">RISK BUDGET</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input id="p-risk" type="range" min="0.1" max="5" step="0.1" value="1.0" style="flex:1;" oninput="document.getElementById('p-risk-v').textContent=parseFloat(this.value).toFixed(1)+'%'">
+        <span id="p-risk-v" style="min-width:40px;text-align:right;color:#e0e0e0;">1.0%</span>
+      </div>
+      <button class="wiz-btn" onclick="createPortfolio()">CREATE PORTFOLIO</button>
+      <button class="wiz-cancel" onclick="showWizard()">BACK</button>
+    </div>
+  `;
+}
+
+async function createSolo() {
+  const body = {
+    strategy: document.getElementById('w-strat').value,
+    broker: document.getElementById('w-broker').value,
+    symbol: document.getElementById('w-sym').value,
+    quantity: parseInt(document.getElementById('w-qty').value),
+    allocation_pct: parseInt(document.getElementById('w-alloc').value),
+  };
+  await fetch('/api/allocation/create', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  hideWizard();
+  poll();
+}
+
+async function createPortfolio() {
+  const checked = [...document.querySelectorAll('.p-strat-cb:checked')].map(c => c.value);
+  const body = {
+    name: document.getElementById('p-name').value,
+    broker: document.getElementById('p-broker').value,
+    strategies: checked,
+    sizing_mode: document.getElementById('p-sizing').value,
+    risk_pct: parseFloat(document.getElementById('p-risk').value),
+  };
+  await fetch('/api/portfolio/create', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  hideWizard();
+  poll();
+}
+
+// Poll every 10 seconds
+poll();
+setInterval(poll, 10000);
+</script>
+</body>
+</html>
