@@ -285,9 +285,6 @@ class Router:
                     if calc_qty != quantity:
                         self.log(f"[{strategy_name}] dynamic size: {calc_qty}x {symbol} (from equity ${equity:,.0f})")
                         quantity = calc_qty
-        else:
-            symbol = routing.get("symbol", signal.symbol)
-            quantity = routing.get("quantity", signal.quantity)
 
         if SIM_MODE:
             self.log(f"[SIM] {strategy_name} -> {signal.direction} {quantity}x {symbol} (conf={signal.confidence:.1%})")
