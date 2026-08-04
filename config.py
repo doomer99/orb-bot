@@ -52,6 +52,27 @@ ROUTES = {
     "Nour ML": _route("NOUR", {"broker": "tradier_sandbox", "enabled": True, "symbol": "SPY", "quantity": 1}),
 }
 
+# Auto-create allocations for prop firm connections
+PROP_ALLOCATIONS = {}
+if "topstep" in BROKERS:
+    PROP_ALLOCATIONS["Nour ML TopStep"] = {
+        "strategy": "Nour ML",
+        "broker": "topstep",
+        "symbol": os.environ.get("P1_TICKER", "MES1!"),
+        "quantity": int(os.environ.get("P1_QTY", "1")),
+        "allocation_pct": 100.0,
+        "enabled": os.environ.get("P1_ENABLED", "true").lower() == "true",
+    }
+if "prop_firm_2" in BROKERS:
+    PROP_ALLOCATIONS["Nour ML Prop2"] = {
+        "strategy": "Nour ML",
+        "broker": "prop_firm_2",
+        "symbol": os.environ.get("P3_TICKER", "MES1!"),
+        "quantity": int(os.environ.get("P3_QTY", "1")),
+        "allocation_pct": 100.0,
+        "enabled": os.environ.get("P3_ENABLED", "true").lower() == "true",
+    }
+
 DEFAULT_ROUTE = {"broker": "tradier_sandbox", "enabled": False, "symbol": "SPY", "quantity": 1}
 
 def discover_strategies():
