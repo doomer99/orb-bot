@@ -110,6 +110,10 @@ def toggle_book(name: str):
         router.allocations[name].enabled = not router.allocations[name].enabled
         router.save_portfolio_config()
         return {"ok": True, "enabled": router.allocations[name].enabled}
+    if name in router.strategies:
+        router.strategies[name].enabled = not router.strategies[name].enabled
+        router.log(f"Strategy [{name}] {'enabled' if router.strategies[name].enabled else 'disabled'} via dashboard")
+        return {"ok": True, "enabled": router.strategies[name].enabled}
     return {"ok": False, "error": "Not found"}
 
 
