@@ -394,7 +394,10 @@ def dashboard():
 
 
 # ── Start ──
-
 if __name__ == "__main__":
+    # Pulls Railway's network port allocation dynamically
     port = int(os.environ.get("PORT", 8080))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    
+    # Use the string reference format "filename:app_variable"
+    uvicorn.run("server:app", host="0.0.0.0", port=port, workers=1)
+
