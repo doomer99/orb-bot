@@ -1,5 +1,5 @@
 # router.py — Strategy orchestrator with portfolios + circuit breaker
-import time, threading, pytz
+import time, threading, pytz, json, os
 from datetime import datetime, date
 from typing import Dict, List, Optional
 from brokers import TradierBroker, TradersPostBroker
@@ -9,6 +9,8 @@ from config import BROKERS, ROUTES, SIM_MODE, DAILY_LOSS_LIMIT, DAILY_LOSS_BUFFE
 from portfolio import Portfolio, DirectAllocation, load_portfolios, save_portfolios, get_asset_data
 
 ET = pytz.timezone("America/New_York")
+
+TRADES_FILE = os.path.join(os.path.dirname(__file__), "active_trades.json")
 
 
 class Router:
@@ -23,8 +25,61 @@ class Router:
         self.portfolios: Dict[str, Portfolio] = {}
         self.allocations: Dict[str, DirectAllocation] = {}
         self._load_portfolio_config()
+        self._load_active_trades()
         self._circuit_breaker_active = False
         self._circuit_breaker_time = None
+
+    def _load_active_trades(self):
+        """Load active trades from disk so they survive restarts."""
+        try:
+            if os.path.exists(TRADES_FILE):
+                with open(TRADES_FILE, "r") as f:
+                    saved = json.load(f)
+                for name, trade in saved.items():
+                    if trade.get("status") in ("OPEN", "SIM"):
+                        # Reconstruct the signal object
+                        sig_data = trade.get("signal", {})
+                        signal = Signal(
+                            direction=sig_data.get("direction", "UP"),
+                            confidence=sig_data.get("confidence", 0.5),
+                            symbol=sig_data.get("symbol", "SPY"),
+                            quantity=sig_data.get("quantity", 1),
+                        )
+                        trade["signal"] = signal
+                        if "entry_time" in trade and isinstance(trade["entry_time"], str):
+                            try:
+                                trade["entry_time"] = datetime.fromisoformat(trade["entry_time"])
+                            except Exception:
+                                trade["entry_time"] = datetime.now(ET)
+                        self.active_trades[name] = trade
+                if self.active_trades:
+                    print(f"Restored {len(self.active_trades)} active trade(s) from disk")
+        except Exception as e:
+            print(f"Could not load active trades: {e}")
+
+    def _save_active_trades(self):
+        """Save active trades to disk."""
+        try:
+            to_save = {}
+            for name, trade in self.active_trades.items():
+                t = dict(trade)
+                # Convert signal to dict for JSON
+                if hasattr(t.get("signal"), "direction"):
+                    sig = t["signal"]
+                    t["signal"] = {
+                        "direction": sig.direction,
+                        "confidence": sig.confidence,
+                        "symbol": sig.symbol,
+                        "quantity": sig.quantity,
+                    }
+                # Convert datetime to string
+                if hasattr(t.get("entry_time"), "isoformat"):
+                    t["entry_time"] = t["entry_time"].isoformat()
+                to_save[name] = t
+            with open(TRADES_FILE, "w") as f:
+                json.dump(to_save, f, indent=2)
+        except Exception as e:
+            print(f"Could not save active trades: {e}")
 
     def _load_portfolio_config(self):
         self.portfolios, self.allocations = load_portfolios()
@@ -153,6 +208,7 @@ class Router:
         if SIM_MODE:
             self.log(f"[SIM] {strategy_name} -> {signal.direction} {quantity}x {symbol} (conf={signal.confidence:.1%})")
             self.active_trades[strategy_name] = {"signal": signal, "entry_time": datetime.now(ET), "status": "SIM", "quantity": quantity, "symbol": symbol}
+            self._save_active_trades()
             return True
         if not broker:
             self.log(f"[{strategy_name}] no broker assigned")
@@ -165,6 +221,7 @@ class Router:
         if result.success:
             self.log(f"[{strategy_name}] filled: {result.message}")
             self.active_trades[strategy_name] = {"signal": signal, "entry_time": datetime.now(ET), "order_id": result.order_id, "occ_symbol": result.symbol, "status": "OPEN", "quantity": quantity, "symbol": symbol}
+            self._save_active_trades()
         else:
             self.log(f"[{strategy_name}] failed: {result.message}")
         return result.success
@@ -180,6 +237,7 @@ class Router:
         if SIM_MODE:
             self.log(f"[SIM] {strategy_name} closed")
             trade["status"] = "CLOSED"
+            self._save_active_trades()
             return True
         if not broker:
             self.log(f"[{strategy_name}] no broker for close")
@@ -188,6 +246,7 @@ class Router:
         if result.success:
             self.log(f"[{strategy_name}] closed: {result.message}")
             trade["status"] = "CLOSED"
+            self._save_active_trades()
         else:
             self.log(f"[{strategy_name}] close failed: {result.message}")
         return result.success
