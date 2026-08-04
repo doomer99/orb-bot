@@ -25,6 +25,9 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
+# Log which keys are configured at startup
+print(f"API Keys: Polygon={'YES' if POLYGON_API_KEY else 'NO'} | Gemini={'YES' if GEMINI_API_KEY else 'NO'} | DeepSeek={'YES' if DEEPSEEK_API_KEY else 'NO'} | Anthropic={'YES' if ANTHROPIC_API_KEY else 'NO'}")
+
 
 # ══════════════════════════════════════════════
 # EXISTING ENDPOINTS (unchanged)
@@ -257,17 +260,22 @@ def _call_ai(prompt: str, system_prompt: str = "") -> str:
     # Try Gemini (free tier)
     if GEMINI_API_KEY:
         try:
-            r = http_requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={
-                    "contents": [{"parts": [{"text": f"{system_prompt}\n\n{prompt}"}]}],
-                    "generationConfig": {"maxOutputTokens": 1000, "temperature": 0.7}
-                },
-                timeout=30
-            )
-            if r.status_code == 200:
-                data = r.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"]
+            # Try gemini-1.5-flash first (most widely available), then 2.0-flash
+            for model in ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-pro"]:
+                r = http_requests.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}",
+                    json={
+                        "contents": [{"parts": [{"text": f"{system_prompt}\n\n{prompt}"}]}],
+                        "generationConfig": {"maxOutputTokens": 1000, "temperature": 0.7}
+                    },
+                    timeout=30
+                )
+                print(f"Gemini [{model}] status: {r.status_code}")
+                if r.status_code == 200:
+                    data = r.json()
+                    return data["candidates"][0]["content"]["parts"][0]["text"]
+                else:
+                    print(f"Gemini [{model}] response: {r.text[:300]}")
         except Exception as e:
             print(f"Gemini error: {e}")
     
