@@ -28,15 +28,26 @@ if os.environ.get("P1_WEBHOOK_URL"):
         "type": "webhook", "name": "TopStep (TradersPost)",
         "webhook_url": os.environ["P1_WEBHOOK_URL"],
         "password": os.environ.get("P1_PASSWORD", ""),
-        "ticker": os.environ.get("P1_TICKER", "MES1!"),
+        "ticker": os.environ.get("P1_TICKER", "MES"),
+        "asset_class": os.environ.get("P1_ASSET_CLASS", "futures"),
+    }
+
+if os.environ.get("P2_WEBHOOK_URL"):
+    BROKERS["prop_firm_2"] = {
+        "type": "webhook", "name": "Prop Firm 2",
+        "webhook_url": os.environ["P2_WEBHOOK_URL"],
+        "password": os.environ.get("P2_PASSWORD", ""),
+        "ticker": os.environ.get("P2_TICKER", "MES"),
+        "asset_class": os.environ.get("P2_ASSET_CLASS", "futures"),
     }
 
 if os.environ.get("P3_WEBHOOK_URL"):
-    BROKERS["prop_firm_2"] = {
-        "type": "webhook", "name": "Prop Firm 2",
+    BROKERS["prop_firm_3"] = {
+        "type": "webhook", "name": "Prop Firm 3",
         "webhook_url": os.environ["P3_WEBHOOK_URL"],
         "password": os.environ.get("P3_PASSWORD", ""),
-        "ticker": os.environ.get("P3_TICKER", "MES1!"),
+        "ticker": os.environ.get("P3_TICKER", "MES"),
+        "asset_class": os.environ.get("P3_ASSET_CLASS", "futures"),
     }
 
 def _route(strategy_key, defaults):
@@ -59,7 +70,7 @@ if "topstep" in BROKERS:
         "strategy": "Nour ML",
         "broker": "topstep",
         "symbol": os.environ.get("P1_TICKER", "MES1!"),
-        "quantity": int(os.environ.get("P1_QTY", "1")),
+        "quantity": int(os.environ.get("P1_QUANTITY", "1")),
         "allocation_pct": 100.0,
         "enabled": os.environ.get("P1_ENABLED", "true").lower() == "true",
     }
@@ -67,8 +78,17 @@ if "prop_firm_2" in BROKERS:
     PROP_ALLOCATIONS["Nour ML Prop2"] = {
         "strategy": "Nour ML",
         "broker": "prop_firm_2",
+        "symbol": os.environ.get("P2_TICKER", "MES1!"),
+        "quantity": int(os.environ.get("P2_QUANTITY", "1")),
+        "allocation_pct": 100.0,
+        "enabled": os.environ.get("P2_ENABLED", "true").lower() == "true",
+    }
+if "prop_firm_3" in BROKERS:
+    PROP_ALLOCATIONS["Nour ML Prop3"] = {
+        "strategy": "Nour ML",
+        "broker": "prop_firm_3",
         "symbol": os.environ.get("P3_TICKER", "MES1!"),
-        "quantity": int(os.environ.get("P3_QTY", "1")),
+        "quantity": int(os.environ.get("P3_QUANTITY", "1")),
         "allocation_pct": 100.0,
         "enabled": os.environ.get("P3_ENABLED", "true").lower() == "true",
     }
