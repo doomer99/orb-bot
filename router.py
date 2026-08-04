@@ -218,26 +218,73 @@ class Router:
             return False
         routing = self._resolve_route(strategy_name)
         broker = self._get_broker(routing["broker"])
+
+        # Get account equity from broker (if available)
+        equity = 0
+        if broker:
+            try:
+                info = broker.get_account_info()
+                equity = info.equity or 0
+            except Exception:
+                pass
+
         if routing["type"] == "portfolio":
             portfolio = self.portfolios[routing["portfolio"]]
             symbol = signal.symbol
-            equity = 0
-            if broker:
-                try:
-                    info = broker.get_account_info()
-                    equity = info.equity
-                except Exception:
-                    pass
             if equity > 0:
                 asset_data = get_asset_data([symbol])
                 sizes = portfolio.calculate_position_sizes(equity, asset_data)
                 quantity = sizes.get(symbol, 1)
             else:
                 quantity = 1
-            self.log(f"[{strategy_name}] via portfolio [{portfolio.name}] -> {quantity}x {symbol}")
+            if not portfolio.risk_ok(equity):
+                self.log(f"[{strategy_name}] blocked — portfolio [{portfolio.name}] daily loss limit reached")
+                return False
+            self.log(f"[{strategy_name}] via portfolio [{portfolio.name}] -> {quantity}x {symbol} (equity=${equity:,.0f})")
+
         elif routing["type"] == "direct":
+            # Check if this allocation has dynamic sizing enabled
+            alloc_name = strategy_name
+            alloc = self.allocations.get(alloc_name)
             symbol = routing["symbol"]
-            quantity = routing["quantity"]
+
+            if alloc and equity > 0 and alloc.allocation_pct < 100:
+                # Dynamic sizing: use allocation percentage of equity
+                asset_data = get_asset_data([symbol])
+                price_data = asset_data.get(symbol, {})
+                price = price_data.get("price", 100)
+                point_value = price_data.get("point_value", 100)
+                # Calculate dollar amount for this allocation
+                alloc_dollars = equity * (alloc.allocation_pct / 100.0)
+                # Calculate contracts based on price
+                cost_per_contract = price * point_value / 100  # rough cost per option/contract
+                if cost_per_contract > 0:
+                    quantity = max(1, int(alloc_dollars / cost_per_contract))
+                else:
+                    quantity = alloc.quantity
+                self.log(f"[{strategy_name}] dynamic size: ${alloc_dollars:,.0f} alloc -> {quantity}x {symbol}")
+            else:
+                quantity = routing["quantity"]
+            self.log(f"[{strategy_name}] direct -> {quantity}x {symbol}")
+
+        else:
+            symbol = routing.get("symbol", signal.symbol)
+            quantity = routing.get("quantity", 1)
+
+            # If broker provides equity, do basic sizing
+            if equity > 0:
+                asset_data = get_asset_data([symbol])
+                price_data = asset_data.get(symbol, {})
+                price = price_data.get("price", 100)
+                point_value = price_data.get("point_value", 100)
+                # For legacy routes, use risk_pct from daily loss limit config
+                risk_budget = equity * 0.01  # 1% default risk
+                expected_move = price * (price_data.get("avg_move_pct", 0.20) / 100.0) * point_value
+                if expected_move > 0:
+                    calc_qty = max(1, int(risk_budget / expected_move))
+                    if calc_qty != quantity:
+                        self.log(f"[{strategy_name}] dynamic size: {calc_qty}x {symbol} (from equity ${equity:,.0f})")
+                        quantity = calc_qty
         else:
             symbol = routing.get("symbol", signal.symbol)
             quantity = routing.get("quantity", signal.quantity)
