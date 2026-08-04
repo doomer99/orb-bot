@@ -47,38 +47,38 @@ body{font-family:'JetBrains Mono',monospace;background:#0d0d14;color:#ccc;font-s
 .ylw{color:#fbbf24!important;}
 
 /* Three column layout */
-.three{display:grid;grid-template-columns:210px 1fr 220px;gap:24px;margin-bottom:18px;flex:1;}
+.three{display:grid;grid-template-columns:230px 1fr 240px;gap:24px;margin-bottom:18px;flex:1;}
 .three.focus-mode{grid-template-columns:1fr;gap:0;}
 .three.focus-mode .col-left,.three.focus-mode .col-right{display:none;}
 .col-left,.col-right{display:flex;flex-direction:column;gap:14px;}
 
 .panel{background:#12121e;border:1px solid #1e1e2e;border-radius:4px;overflow:hidden;}
-.p-hdr{padding:8px 12px;border-bottom:1px solid #1e1e2e;display:flex;justify-content:space-between;align-items:center;}
-.p-ttl{font-size:12px;font-weight:700;color:#e0e0e0;letter-spacing:1px;}
-.p-ttl-s{font-size:11px;font-weight:600;color:#999;letter-spacing:0.5px;}
-.new-btn{font-size:8px;padding:1px 5px;background:transparent;color:#60a5fa;border:1px solid #1e3a5f;border-radius:3px;cursor:pointer;font-family:inherit;}
+.p-hdr{padding:10px 14px;border-bottom:1px solid #1e1e2e;display:flex;justify-content:space-between;align-items:center;}
+.p-ttl{font-size:13px;font-weight:700;color:#e0e0e0;letter-spacing:1px;}
+.p-ttl-s{font-size:12px;font-weight:600;color:#999;letter-spacing:0.5px;}
+.new-btn{font-size:9px;padding:2px 7px;background:transparent;color:#60a5fa;border:1px solid #1e3a5f;border-radius:3px;cursor:pointer;font-family:inherit;}
 .new-btn:hover{background:#1e1e2e;}
 
 /* Portfolio cards */
-.port-card{padding:8px 10px;border-bottom:1px solid #1a1a28;transition:background 0.15s;}
+.port-card{padding:10px 12px;border-bottom:1px solid #1a1a28;transition:background 0.15s;}
 .port-card:hover{background:#16162a;}
 .port-card:last-child{border-bottom:none;}
-.port-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
-.port-name{font-size:11px;font-weight:700;color:#e0e0e0;cursor:pointer;}
+.port-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.port-name{font-size:13px;font-weight:700;color:#e0e0e0;cursor:pointer;}
 .port-name:hover{color:#60a5fa;}
-.port-toggle{position:relative;width:28px;height:14px;border-radius:7px;cursor:pointer;border:none;transition:background 0.2s;}
+.port-toggle{position:relative;width:34px;height:18px;border-radius:9px;cursor:pointer;border:none;transition:background 0.2s;}
 .port-toggle.on{background:#14532d;border:1px solid #166534;}
 .port-toggle.off{background:#1a1a28;border:1px solid #252530;}
-.port-toggle-dot{position:absolute;top:2px;width:9px;height:9px;border-radius:50%;background:#fff;transition:left 0.15s;}
-.port-toggle.on .port-toggle-dot{left:15px;background:#4ade80;}
-.port-toggle.off .port-toggle-dot{left:3px;background:#555;}
-.port-meta{display:flex;gap:8px;align-items:center;font-size:9px;color:#777;margin-bottom:3px;}
+.port-toggle-dot{position:absolute;top:3px;width:11px;height:11px;border-radius:50%;background:#fff;transition:left 0.15s;}
+.port-toggle.on .port-toggle-dot{left:18px;background:#4ade80;}
+.port-toggle.off .port-toggle-dot{left:4px;background:#555;}
+.port-meta{display:flex;gap:10px;align-items:center;font-size:11px;color:#777;margin-bottom:4px;}
 .port-pnl{font-weight:500;}
-.port-conn{display:flex;align-items:center;gap:3px;}
-.port-conn-dot{width:4px;height:4px;border-radius:50%;display:inline-block;}
-.port-trades{font-size:9px;color:#555;margin-bottom:4px;}
-.port-actions{display:flex;gap:3px;margin-top:4px;}
-.port-act{padding:2px 5px;font-size:8px;font-family:inherit;background:#12121e;color:#555;border:1px solid #1e1e2e;border-radius:2px;cursor:pointer;}
+.port-conn{display:flex;align-items:center;gap:4px;}
+.port-conn-dot{width:5px;height:5px;border-radius:50%;display:inline-block;}
+.port-trades{font-size:11px;color:#555;margin-bottom:5px;}
+.port-actions{display:flex;gap:4px;margin-top:5px;}
+.port-act{padding:3px 8px;font-size:9px;font-family:inherit;background:#12121e;color:#555;border:1px solid #1e1e2e;border-radius:2px;cursor:pointer;}
 .port-act:hover{color:#888;border-color:#333;}
 .port-act-sell{background:#2a1515;color:#f87171;border-color:#4a2020;}
 .port-act-sell:hover{background:#3a1515;}
@@ -110,7 +110,7 @@ body{font-family:'JetBrains Mono',monospace;background:#0d0d14;color:#ccc;font-s
 .focus-btn button.active{background:#1e3a5f;color:#60a5fa;border-color:#2a4a6f;}
 
 /* Watchlist */
-.wl-item{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid #1a1a28;font-size:10px;cursor:pointer;transition:background 0.15s;}
+.wl-item{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:1px solid #1a1a28;font-size:12px;cursor:pointer;transition:background 0.15s;}
 .wl-item:hover{background:#16162a;}
 .wl-sym{font-weight:500;color:#e0e0e0;}
 .wl-price{color:#888;}
@@ -118,16 +118,16 @@ body{font-family:'JetBrains Mono',monospace;background:#0d0d14;color:#ccc;font-s
 .wl-add input{width:100%;font-size:9px;font-family:inherit;padding:3px 6px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:3px;text-transform:uppercase;letter-spacing:0.5px;}
 
 /* Scanner */
-.scan-item{padding:5px 10px;border-bottom:1px solid #1a1a28;font-size:9px;}
-.scan-tag{padding:1px 4px;border-radius:2px;display:inline-block;font-size:8px;margin-right:3px;}
+.scan-item{padding:6px 12px;border-bottom:1px solid #1a1a28;font-size:11px;}
+.scan-tag{padding:1px 5px;border-radius:2px;display:inline-block;font-size:9px;margin-right:4px;}
 .scan-over{background:#14532d;color:#4ade80;}
 .scan-under{background:#2a1515;color:#f87171;}
 .scan-vol{background:#422006;color:#fbbf24;}
 .scan-break{background:#1e3a5f;color:#60a5fa;}
 
 /* Intel */
-.intel-item{padding:5px 10px;border-bottom:1px solid #1a1a28;font-size:9px;}
-.intel-tag{padding:0 4px;border-radius:2px;display:inline-block;font-size:8px;}
+.intel-item{padding:6px 12px;border-bottom:1px solid #1a1a28;font-size:11px;}
+.intel-tag{padding:1px 5px;border-radius:2px;display:inline-block;font-size:9px;}
 .intel-flow{background:#1e3a5f;color:#60a5fa;}
 .intel-news{background:#1a1a28;color:#888;}
 .intel-macro{background:#1a1a28;color:#888;}
@@ -144,19 +144,19 @@ body{font-family:'JetBrains Mono',monospace;background:#0d0d14;color:#ccc;font-s
 .bottom-toggle-btn{font-size:9px;font-family:inherit;background:transparent;color:#555;border:1px solid #1e1e2e;border-radius:3px;padding:2px 10px;cursor:pointer;}
 .bottom-toggle-btn:hover{color:#888;border-color:#333;}
 .bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
-.b-hdr{padding:7px 12px;border-bottom:1px solid #1e1e2e;display:flex;justify-content:space-between;}
-.b-ttl{font-size:12px;font-weight:700;color:#e0e0e0;letter-spacing:1px;}
-.b-sum{font-size:9px;}
-.b-row{padding:3px 10px;display:flex;justify-content:space-between;font-size:9px;border-bottom:1px solid #151520;}
+.b-hdr{padding:8px 14px;border-bottom:1px solid #1e1e2e;display:flex;justify-content:space-between;}
+.b-ttl{font-size:13px;font-weight:700;color:#e0e0e0;letter-spacing:1px;}
+.b-sum{font-size:11px;}
+.b-row{padding:4px 12px;display:flex;justify-content:space-between;font-size:11px;border-bottom:1px solid #151520;}
 .b-row:last-child{border-bottom:none;}
-.log-l{padding:2px 10px;font-size:9px;color:#555;line-height:1.7;}
+.log-l{padding:3px 12px;font-size:11px;color:#555;line-height:1.7;}
 
 /* Tucked-away sections */
 .tucked{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px;}
 .tucked-toggle{text-align:center;margin-top:8px;}
 .tucked-toggle-btn{font-size:8px;font-family:inherit;background:transparent;color:#444;border:1px solid #1a1a28;border-radius:3px;padding:2px 8px;cursor:pointer;}
 .tucked-toggle-btn:hover{color:#666;border-color:#333;}
-.cfg-row{display:flex;justify-content:space-between;padding:2px 8px;font-size:9px;}
+.cfg-row{display:flex;justify-content:space-between;padding:3px 10px;font-size:11px;}
 
 /* Circuit breaker */
 .cb-banner{padding:8px 18px;background:#2a1515;color:#f87171;font-size:11px;border-bottom:1px solid #4a2020;display:none;}
@@ -231,86 +231,15 @@ body{font-family:'JetBrains Mono',monospace;background:#0d0d14;color:#ccc;font-s
     <div class="panel">
       <div class="p-hdr"><span class="p-ttl">ACTIVE BOOKS</span><button class="new-btn" onclick="showWizard()">+ NEW</button></div>
       <div id="books-list">
-        <!-- Demo portfolio cards -->
-        <div class="port-card" id="port-spy">
-          <div class="port-top">
-            <span class="port-name" onclick="showPortDetail('SPY Momentum')">SPY Momentum</span>
-            <button class="port-toggle on" onclick="togglePort(this)"><div class="port-toggle-dot"></div></button>
-          </div>
-          <div class="port-meta">
-            <span class="port-pnl grn">+$420.50</span>
-            <span class="port-conn"><span class="port-conn-dot" style="background:#4ade80;"></span> Alpaca</span>
-          </div>
-          <div class="port-trades">1 open · 3 closed today</div>
-          <div class="port-actions">
-            <button class="port-act" onclick="togglePortDetail('port-spy-detail')">▼ detail</button>
-            <button class="port-act port-act-sell" onclick="sellAll('SPY Momentum')">sell all</button>
-          </div>
-          <div class="port-detail" id="port-spy-detail">
-            <div class="port-detail-inner">
-              <div class="port-detail-row"><span>Strategy</span><span style="color:#bbb;">Stoch RSI Mean Rev</span></div>
-              <div class="port-detail-row"><span>Win rate</span><span class="grn">68%</span></div>
-              <div class="port-detail-row"><span>Avg trade</span><span style="color:#bbb;">+$85.20</span></div>
-              <div class="port-detail-row"><span>Open P&L</span><span class="grn">+$142.00</span></div>
-              <div class="port-detail-row"><span>Max DD</span><span class="red">-$320.00</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="port-card" id="port-tsla">
-          <div class="port-top">
-            <span class="port-name" onclick="showPortDetail('TSLA Scalper')">TSLA Scalper</span>
-            <button class="port-toggle on" onclick="togglePort(this)"><div class="port-toggle-dot"></div></button>
-          </div>
-          <div class="port-meta">
-            <span class="port-pnl red">-$85.30</span>
-            <span class="port-conn"><span class="port-conn-dot" style="background:#4ade80;"></span> Alpaca</span>
-          </div>
-          <div class="port-trades">0 open · 2 closed today</div>
-          <div class="port-actions">
-            <button class="port-act" onclick="togglePortDetail('port-tsla-detail')">▼ detail</button>
-            <button class="port-act port-act-sell" onclick="sellAll('TSLA Scalper')">sell all</button>
-          </div>
-          <div class="port-detail" id="port-tsla-detail">
-            <div class="port-detail-inner">
-              <div class="port-detail-row"><span>Strategy</span><span style="color:#bbb;">Stoch RSI Scalp</span></div>
-              <div class="port-detail-row"><span>Win rate</span><span class="ylw">52%</span></div>
-              <div class="port-detail-row"><span>Avg trade</span><span style="color:#bbb;">+$22.40</span></div>
-              <div class="port-detail-row"><span>Open P&L</span><span style="color:#555;">—</span></div>
-              <div class="port-detail-row"><span>Max DD</span><span class="red">-$510.00</span></div>
-            </div>
-          </div>
-        </div>
-        <div class="port-card" id="port-nq">
-          <div class="port-top">
-            <span class="port-name" onclick="showPortDetail('NQ Overnight')">NQ Overnight</span>
-            <button class="port-toggle off" onclick="togglePort(this)"><div class="port-toggle-dot"></div></button>
-          </div>
-          <div class="port-meta">
-            <span class="port-pnl" style="color:#555;">—</span>
-            <span class="port-conn"><span class="port-conn-dot" style="background:#555;"></span> Not connected</span>
-          </div>
-          <div class="port-trades">Building strategy...</div>
-          <div class="port-actions">
-            <button class="port-act" onclick="togglePortDetail('port-nq-detail')">▼ detail</button>
-          </div>
-          <div class="port-detail" id="port-nq-detail">
-            <div class="port-detail-inner">
-              <div class="port-detail-row"><span>Strategy</span><span style="color:#bbb;">Overnight Fade</span></div>
-              <div class="port-detail-row"><span>Status</span><span class="ylw">Configuring</span></div>
-            </div>
-          </div>
-        </div>
+        <div class="empty">Loading books...</div>
       </div>
     </div>
 
     <!-- Risk exposure -->
     <div class="panel">
       <div class="p-hdr"><span class="p-ttl-s">EXPOSURE</span></div>
-      <div style="padding:6px 10px;">
-        <div class="cfg-row"><span style="color:#888;">Capital deployed</span><span style="color:#bbb;">$12,400</span></div>
-        <div class="cfg-row"><span style="color:#888;">NAV at risk</span><span class="ylw">12.4%</span></div>
-        <div class="cfg-row"><span style="color:#888;">Max DD today</span><span class="red">-$510</span></div>
-        <div class="cfg-row"><span style="color:#888;">Correlation</span><span style="color:#bbb;">0.42</span></div>
+      <div id="exposure-body" style="padding:6px 10px;">
+        <div class="cfg-row"><span style="color:#888;">Capital deployed</span><span style="color:#555;">—</span></div>
       </div>
     </div>
   </div>
@@ -445,27 +374,16 @@ body{font-family:'JetBrains Mono',monospace;background:#0d0d14;color:#ccc;font-s
   <div class="bottom-toggle"><button class="bottom-toggle-btn" id="bottom-toggle" onclick="toggleBottom()">▼ OPEN / RECENT / SYSTEM</button></div>
   <div class="bottom" id="bottom-panels">
     <div class="panel">
-      <div class="b-hdr"><span class="b-ttl">OPEN</span><span class="b-sum" id="open-sum" style="color:#555;">1</span></div>
-      <div id="open-body">
-        <div class="b-row"><span style="color:#bbb;">SPY Momentum <span class="grn">LONG</span></span><span style="color:#888;">09:42 AM</span></div>
-      </div>
+      <div class="b-hdr"><span class="b-ttl">OPEN</span><span class="b-sum" id="open-sum" style="color:#555;">0</span></div>
+      <div id="open-body"><div class="empty">Waiting for signal<div class="countdown" id="countdown"></div></div></div>
     </div>
     <div class="panel">
-      <div class="b-hdr"><span class="b-ttl">RECENT</span><span class="b-sum grn" id="recent-sum">5 today</span></div>
-      <div id="recent-body">
-        <div class="b-row"><span style="color:#888;">SPY closed +$142.00</span><span style="color:#555;">11:15 AM</span></div>
-        <div class="b-row"><span style="color:#888;">TSLA closed -$45.20</span><span style="color:#555;">10:52 AM</span></div>
-        <div class="b-row"><span style="color:#888;">SPY closed +$98.50</span><span style="color:#555;">10:20 AM</span></div>
-      </div>
+      <div class="b-hdr"><span class="b-ttl">RECENT</span><span class="b-sum" id="recent-sum" style="color:#555;">—</span></div>
+      <div id="recent-body"><div class="empty">No trades yet</div></div>
     </div>
     <div class="panel">
       <div class="b-hdr"><span class="b-ttl">SYSTEM</span></div>
-      <div id="log-body">
-        <div class="log-l" style="color:#4ade80;">09:42:15 FILL SPY Momentum BUY 100 @ 445.20</div>
-        <div class="log-l" style="color:#fbbf24;">09:42:14 SIGNAL SPY Momentum LONG triggered</div>
-        <div class="log-l" style="color:#555;">09:30:01 Market open — all bots active</div>
-        <div class="log-l" style="color:#555;">09:00:00 Pre-market scan complete — 3 setups found</div>
-      </div>
+      <div id="log-body"><div class="log-l">Connecting...</div></div>
     </div>
   </div>
 </div>
@@ -475,18 +393,11 @@ body{font-family:'JetBrains Mono',monospace;background:#0d0d14;color:#ccc;font-s
 <div class="tucked" id="tucked-panels" style="display:none;">
   <div class="panel">
     <div class="p-hdr"><span class="p-ttl-s">STRATEGIES</span></div>
-    <div id="strat-list">
-      <div class="cfg-row"><span style="color:#bbb;">Stoch RSI Mean Rev</span><span class="grn">68%</span></div>
-      <div class="cfg-row"><span style="color:#bbb;">Stoch RSI Scalp</span><span class="ylw">52%</span></div>
-      <div class="cfg-row"><span style="color:#555;">Overnight Fade</span><span style="color:#555;">—</span></div>
-    </div>
+    <div id="strat-list"><div class="cfg-row"><span style="color:#555;">Loading...</span></div></div>
   </div>
   <div class="panel">
     <div class="p-hdr"><span class="p-ttl-s">CONNECTIONS</span></div>
-    <div id="conn-list">
-      <div class="cfg-row"><div style="display:flex;align-items:center;gap:4px;"><div style="width:4px;height:4px;border-radius:50%;background:#4ade80;"></div><span style="color:#bbb;">Alpaca</span></div><span style="color:#555;">$100k</span></div>
-      <div class="cfg-row"><div style="display:flex;align-items:center;gap:4px;"><div style="width:4px;height:4px;border-radius:50%;background:#555;"></div><span style="color:#555;">IBKR</span></div><span style="color:#555;">OFF</span></div>
-    </div>
+    <div id="conn-list"><div class="cfg-row"><span style="color:#555;">Loading...</span></div></div>
   </div>
 </div>
 
@@ -699,7 +610,7 @@ function showPortDetail(name) {
   currentView = 'portfolio';
 }
 
-// Portfolio toggle on/off
+// Portfolio toggle via API
 function togglePort(btn) {
   if (btn.classList.contains('on')) {
     btn.classList.remove('on');
@@ -708,6 +619,10 @@ function togglePort(btn) {
     btn.classList.remove('off');
     btn.classList.add('on');
   }
+}
+function toggleBookAPI(name, btn) {
+  togglePort(btn);
+  fetch('/api/book/' + encodeURIComponent(name) + '/toggle', { method: 'POST' }).then(() => poll());
 }
 
 // Portfolio detail expand/collapse
@@ -901,6 +816,130 @@ function renderState(s) {
     <div class="mc"><div class="mc-l">STRATEGIES</div><div class="mc-v">${sc}</div></div>
     <div class="mc"><div class="mc-l">BOOKS</div><div class="mc-v">${bc}</div></div>
     <div class="mc"><div class="mc-l">SIGNALS</div><div class="mc-v">${sg}</div></div>`;
+
+  // ── Books (strategies with active trades + portfolios + allocations) ──
+  let bh = '';
+  // Portfolios
+  for (const [n, p] of Object.entries(s.portfolios||{})) {
+    const strats = (p.strategies||[]).join(', ');
+    bh += `<div class="port-card">
+      <div class="port-top">
+        <span class="port-name" onclick="showPortDetail('${esc(n)}')">${esc(n)}</span>
+        <button class="port-toggle ${p.enabled?'on':'off'}" onclick="toggleBookAPI('${esc(n)}',this)"><div class="port-toggle-dot"></div></button>
+      </div>
+      <div class="port-meta">
+        <span class="port-conn"><span class="port-conn-dot" style="background:${p.enabled?'#4ade80':'#555'};"></span> ${esc(p.broker)}</span>
+      </div>
+      <div class="port-trades">${strats} · ${p.sizing_mode} · ${p.risk_pct}% risk</div>
+      <div class="port-actions">
+        <button class="port-act port-act-sell" onclick="sellAll('${esc(n)}')">sell all</button>
+      </div>
+    </div>`;
+  }
+  // Direct allocations
+  for (const [n, a] of Object.entries(s.allocations||{})) {
+    const trade = s.active_trades && s.active_trades[n];
+    const hasOpen = trade && (trade.status === 'OPEN' || trade.status === 'SIM');
+    bh += `<div class="port-card">
+      <div class="port-top">
+        <span class="port-name" onclick="showPortDetail('${esc(n)}')">${esc(n)}</span>
+        <button class="port-toggle ${a.enabled?'on':'off'}" onclick="toggleBookAPI('${esc(n)}',this)"><div class="port-toggle-dot"></div></button>
+      </div>
+      <div class="port-meta">
+        <span class="port-pnl" style="color:${hasOpen?'#4ade80':'#555'};">${hasOpen?trade.direction:'idle'}</span>
+        <span class="port-conn"><span class="port-conn-dot" style="background:${a.enabled?'#4ade80':'#555'};"></span> ${esc(a.broker)}</span>
+      </div>
+      <div class="port-trades">${a.quantity}x ${a.symbol} · ${a.allocation_pct}% alloc</div>
+      <div class="port-actions">
+        <button class="port-act port-act-sell" onclick="sellAll('${esc(n)}')">sell all</button>
+      </div>
+    </div>`;
+  }
+  // Standalone strategies (not in a portfolio or allocation)
+  const booked = new Set();
+  for (const p of Object.values(s.portfolios||{})) (p.strategies||[]).forEach(x=>booked.add(x));
+  for (const a of Object.keys(s.allocations||{})) booked.add(a);
+  for (const [n, sr] of Object.entries(s.strategies||{})) {
+    if (booked.has(n)) continue;
+    const trade = s.active_trades && s.active_trades[n];
+    const hasOpen = trade && (trade.status === 'OPEN' || trade.status === 'SIM');
+    bh += `<div class="port-card">
+      <div class="port-top">
+        <span class="port-name">${esc(n)}</span>
+        <span style="font-size:9px;color:${sr.enabled?'#4ade80':'#555'};">${sr.enabled?'ON':'OFF'}</span>
+      </div>
+      <div class="port-meta">
+        <span class="port-pnl" style="color:${hasOpen?'#4ade80':'#555'};">${hasOpen?trade.direction:'idle'}</span>
+        <span style="font-size:9px;color:#555;">${sr.ready?'ready':'loading...'}</span>
+      </div>
+      <div class="port-trades">Win rate: ${sr.stats?sr.stats.win_rate||0:0}% · ${sr.today_traded?'traded today':'waiting'}</div>
+    </div>`;
+  }
+  if (!bh) bh = '<div class="empty">No books configured</div>';
+  document.getElementById('books-list').innerHTML = bh;
+
+  // ── Exposure ──
+  const positions = Object.values(s.active_trades||{}).filter(t=>t.status==='OPEN'||t.status==='SIM');
+  document.getElementById('exposure-body').innerHTML = `
+    <div class="cfg-row"><span style="color:#888;">NAV</span><span style="color:#bbb;">$${eq.toLocaleString()}</span></div>
+    <div class="cfg-row"><span style="color:#888;">Day P&L</span><span class="${pc}">$${dp>=0?'+':''}${dp.toFixed(2)}</span></div>
+    <div class="cfg-row"><span style="color:#888;">Open positions</span><span style="color:#bbb;">${positions.length}</span></div>
+    <div class="cfg-row"><span style="color:#888;">Circuit breaker</span><span style="color:${s.circuit_breaker?'#f87171':'#4ade80'};">${s.circuit_breaker?'ACTIVE':'off'}</span></div>`;
+
+  // ── Strategies (tucked) ──
+  let sh = '';
+  for (const [n, sr] of Object.entries(s.strategies||{})) {
+    const wr = sr.stats ? sr.stats.win_rate||0 : 0;
+    sh += `<div class="cfg-row"><span style="color:${sr.enabled?'#bbb':'#555'};">${esc(n)}</span><span style="color:${wr>60?'#4ade80':wr>50?'#fbbf24':'#555'};">${wr}%</span></div>`;
+  }
+  if (!sh) sh = '<div class="cfg-row"><span style="color:#555;">None</span></div>';
+  document.getElementById('strat-list').innerHTML = sh;
+
+  // ── Connections (tucked) ──
+  let ch = '';
+  for (const [id, br] of Object.entries(s.brokers||{})) {
+    const dot = br.connected ? '#4ade80' : '#555';
+    const eql = br.equity > 0 ? '$'+Math.round(br.equity/1000)+'k' : 'OFF';
+    ch += `<div class="cfg-row"><div style="display:flex;align-items:center;gap:4px;"><div style="width:4px;height:4px;border-radius:50%;background:${dot};"></div><span style="color:${br.connected?'#bbb':'#555'};">${esc(br.name||id)}</span></div><span style="color:#555;">${eql}</span></div>`;
+  }
+  if (!ch) ch = '<div class="cfg-row"><span style="color:#555;">None</span></div>';
+  document.getElementById('conn-list').innerHTML = ch;
+
+  // ── Open trades ──
+  const ot = Object.entries(s.active_trades||{}).filter(([k,v])=>v.status==='OPEN'||v.status==='SIM');
+  document.getElementById('open-sum').textContent = ot.length;
+  if (ot.length === 0) {
+    document.getElementById('open-body').innerHTML = '<div class="empty">Waiting for signal<div class="countdown" id="countdown"></div></div>';
+  } else {
+    let oh = '';
+    for (const [n, t] of ot) {
+      const dc = (t.direction==='UP'||t.direction==='LONG') ? 'grn' : 'red';
+      oh += `<div class="b-row"><span style="color:#bbb;">${esc(n)} <span class="${dc}">${t.direction}</span> ${t.symbol||''}</span><span style="color:#888;">${t.status}</span></div>`;
+    }
+    document.getElementById('open-body').innerHTML = oh;
+  }
+
+  // ── Recent (closed from log) ──
+  const cl = (s.log||[]).filter(l=>l.toLowerCase().includes('closed'));
+  document.getElementById('recent-sum').textContent = cl.length ? cl.length + ' today' : '—';
+  if (cl.length > 0) {
+    document.getElementById('recent-body').innerHTML = cl.slice(-5).reverse().map(l=>`<div class="b-row"><span style="color:#888;">${esc(l)}</span></div>`).join('');
+  } else {
+    document.getElementById('recent-body').innerHTML = '<div class="empty">No trades yet</div>';
+  }
+
+  // ── System log ──
+  const logs = (s.log||[]).slice(-8).reverse();
+  let lh = '';
+  for (const l of logs) {
+    let c = '#555';
+    if (l.toLowerCase().includes('filled')||l.includes('FILL')) c = '#4ade80';
+    else if (l.toLowerCase().includes('signal')) c = '#fbbf24';
+    else if (l.toLowerCase().includes('failed')||l.toLowerCase().includes('error')) c = '#f87171';
+    lh += `<div class="log-l" style="color:${c};">${esc(l)}</div>`;
+  }
+  if (!logs.length) lh = '<div class="log-l">No activity</div>';
+  document.getElementById('log-body').innerHTML = lh;
 }
 
 // ========== JARVIS AI SYSTEM ==========
