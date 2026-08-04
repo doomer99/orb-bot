@@ -51,14 +51,16 @@ if os.environ.get("P3_WEBHOOK_URL"):
     }
 
 def _route(strategy_key, defaults):
-    prefix = f"ROUTE_{strategy_key.upper()}"
     return {
-        "broker": os.environ.get(f"{prefix}_BROKER", defaults.get("broker", "")),
-        "enabled": os.environ.get(f"{prefix}_ENABLED", str(defaults.get("enabled", False))).lower() == "true",
-        "symbol": os.environ.get(f"{prefix}_SYMBOL", defaults.get("symbol", "SPY")),
-        "quantity": int(os.environ.get(f"{prefix}_QTY", defaults.get("quantity", 1))),
+        "broker": defaults.get("broker", ""),
+        "enabled": defaults.get("enabled", True),
+        "symbol": defaults.get("symbol", "SPY"),
+        "quantity": defaults.get("quantity", 1),
     }
 
+# Default routes — just fallbacks. Real routing is managed from the dashboard
+# via portfolios and allocations. These only apply if a strategy has no
+# portfolio or allocation assigned.
 ROUTES = {
     "Nour ML": _route("NOUR", {"broker": "tradier_sandbox", "enabled": True, "symbol": "SPY", "quantity": 1}),
 }
