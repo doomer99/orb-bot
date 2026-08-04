@@ -6,6 +6,10 @@ from brokers import TradierBroker, TradersPostBroker
 from brokers.base import BaseBroker
 from strategies.base import BaseStrategy, Signal
 from config import BROKERS, ROUTES, SIM_MODE, DAILY_LOSS_LIMIT, DAILY_LOSS_BUFFER
+try:
+    from config import PROP_ALLOCATIONS
+except ImportError:
+    PROP_ALLOCATIONS = {}
 from portfolio import Portfolio, DirectAllocation, load_portfolios, save_portfolios, get_asset_data
 
 ET = pytz.timezone("America/New_York")
@@ -25,9 +29,23 @@ class Router:
         self.portfolios: Dict[str, Portfolio] = {}
         self.allocations: Dict[str, DirectAllocation] = {}
         self._load_portfolio_config()
+        self._load_prop_allocations()
         self._load_active_trades()
         self._circuit_breaker_active = False
         self._circuit_breaker_time = None
+
+    def _load_prop_allocations(self):
+        """Load prop firm allocations from config (env-driven)."""
+        for name, cfg in PROP_ALLOCATIONS.items():
+            if name not in self.allocations:
+                self.allocations[name] = DirectAllocation(cfg["strategy"], {
+                    "broker": cfg["broker"],
+                    "symbol": cfg["symbol"],
+                    "quantity": cfg["quantity"],
+                    "allocation_pct": cfg.get("allocation_pct", 100.0),
+                    "enabled": cfg.get("enabled", True),
+                })
+                self.log(f"Prop allocation [{name}] -> {cfg['broker']}")
 
     def _load_active_trades(self):
         """Load active trades from disk so they survive restarts."""
@@ -161,6 +179,7 @@ class Router:
 
     # ── Routing ──
     def _resolve_route(self, strategy_name: str) -> dict:
+        """Resolve single route (used for closes)."""
         for pname, portfolio in self.portfolios.items():
             if strategy_name in portfolio.strategy_names and portfolio.enabled:
                 return {"type": "portfolio", "portfolio": pname, "broker": portfolio.broker_id}
@@ -170,6 +189,24 @@ class Router:
                 return {"type": "direct", "broker": alloc.broker_id, "symbol": alloc.symbol, "quantity": alloc.get_effective_quantity()}
         route = self.routes.get(strategy_name, {})
         return {"type": "legacy", "broker": route.get("broker", ""), "symbol": route.get("symbol", "SPY"), "quantity": route.get("quantity", 1)}
+
+    def _resolve_all_routes(self, strategy_name: str) -> list:
+        """Resolve ALL enabled destinations for a strategy (multi-broker support)."""
+        routes = []
+        # Check portfolios
+        for pname, portfolio in self.portfolios.items():
+            if strategy_name in portfolio.strategy_names and portfolio.enabled:
+                routes.append({"type": "portfolio", "portfolio": pname, "broker": portfolio.broker_id, "route_id": f"port_{pname}"})
+        # Check allocations
+        if strategy_name in self.allocations:
+            alloc = self.allocations[strategy_name]
+            if alloc.enabled:
+                routes.append({"type": "direct", "broker": alloc.broker_id, "symbol": alloc.symbol, "quantity": alloc.get_effective_quantity(), "route_id": f"alloc_{strategy_name}"})
+        # Check legacy routes
+        route = self.routes.get(strategy_name, {})
+        if route.get("enabled", True) and route.get("broker"):
+            routes.append({"type": "legacy", "broker": route.get("broker", ""), "symbol": route.get("symbol", "SPY"), "quantity": route.get("quantity", 1), "route_id": strategy_name})
+        return routes
 
     def _get_broker(self, broker_id: str) -> Optional[BaseBroker]:
         return self.brokers.get(broker_id)
@@ -332,7 +369,16 @@ class Router:
                     signal = strategy.check_signal(now)
                     if signal:
                         self.log(f"[{name}] signal: {signal.direction} ({signal.confidence:.1%})")
-                        self.place_order(name, signal)
+                        all_routes = self._resolve_all_routes(name)
+                        if all_routes:
+                            for route in all_routes:
+                                route_id = route.get("route_id", name)
+                                trade_key = route_id if len(all_routes) > 1 else name
+                                if trade_key not in self.active_trades:
+                                    self.log(f"[{name}] -> {route.get('broker', '?')} ({route_id})")
+                                    self.place_order(trade_key, signal)
+                        else:
+                            self.place_order(name, signal)
                 except Exception as e:
                     self.log(f"[{name}] signal error: {e}")
             time.sleep(10)
