@@ -242,6 +242,16 @@ body{font-family:'JetBrains Mono',monospace;background:#0d0d14;color:#ccc;font-s
         <div class="cfg-row"><span style="color:#888;">Capital deployed</span><span style="color:#555;">—</span></div>
       </div>
     </div>
+
+    <div class="panel">
+      <div class="p-hdr"><span class="p-ttl-s">STRATEGIES</span></div>
+      <div id="strat-list-main"><div class="cfg-row"><span style="color:#555;">Loading...</span></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="p-hdr"><span class="p-ttl-s">CONNECTIONS</span></div>
+      <div id="conn-list-main"><div class="cfg-row"><span style="color:#555;">Loading...</span></div></div>
+    </div>
   </div>
 
   <!-- CENTER: Switchable viewport -->
@@ -388,18 +398,7 @@ body{font-family:'JetBrains Mono',monospace;background:#0d0d14;color:#ccc;font-s
   </div>
 </div>
 
-<!-- Tucked-away: Strategies + Connections -->
-<div class="tucked-toggle"><button class="tucked-toggle-btn" id="tucked-btn" onclick="toggleTucked()">▶ Strategies & Connections</button></div>
-<div class="tucked" id="tucked-panels" style="display:none;">
-  <div class="panel">
-    <div class="p-hdr"><span class="p-ttl-s">STRATEGIES</span></div>
-    <div id="strat-list"><div class="cfg-row"><span style="color:#555;">Loading...</span></div></div>
-  </div>
-  <div class="panel">
-    <div class="p-hdr"><span class="p-ttl-s">CONNECTIONS</span></div>
-    <div id="conn-list"><div class="cfg-row"><span style="color:#555;">Loading...</span></div></div>
-  </div>
-</div>
+
 
 </div>
 
@@ -716,19 +715,6 @@ function toggleBottom() {
   }
 }
 
-// Tucked sections
-function toggleTucked() {
-  const panels = document.getElementById('tucked-panels');
-  const btn = document.getElementById('tucked-btn');
-  if (panels.style.display === 'none') {
-    panels.style.display = 'grid';
-    btn.textContent = '▼ Strategies & Connections';
-  } else {
-    panels.style.display = 'none';
-    btn.textContent = '▶ Strategies & Connections';
-  }
-}
-
 // Clocks
 function updateClocks() {
   const fmt = (tz) => {
@@ -866,11 +852,11 @@ function renderState(s) {
     bh += `<div class="port-card">
       <div class="port-top">
         <span class="port-name">${esc(n)}</span>
-        <span style="font-size:9px;color:${sr.enabled?'#4ade80':'#555'};">${sr.enabled?'ON':'OFF'}</span>
+        <button class="port-toggle ${sr.enabled?'on':'off'}" onclick="toggleBookAPI('${esc(n)}',this)"><div class="port-toggle-dot"></div></button>
       </div>
       <div class="port-meta">
         <span class="port-pnl" style="color:${hasOpen?'#4ade80':'#555'};">${hasOpen?trade.direction:'idle'}</span>
-        <span style="font-size:9px;color:#555;">${sr.ready?'ready':'loading...'}</span>
+        <span style="font-size:11px;color:#555;">${sr.ready?'ready':'loading...'}</span>
       </div>
       <div class="port-trades">Win rate: ${sr.stats?sr.stats.win_rate||0:0}% · ${sr.today_traded?'traded today':'waiting'}</div>
     </div>`;
@@ -893,7 +879,7 @@ function renderState(s) {
     sh += `<div class="cfg-row"><span style="color:${sr.enabled?'#bbb':'#555'};">${esc(n)}</span><span style="color:${wr>60?'#4ade80':wr>50?'#fbbf24':'#555'};">${wr}%</span></div>`;
   }
   if (!sh) sh = '<div class="cfg-row"><span style="color:#555;">None</span></div>';
-  document.getElementById('strat-list').innerHTML = sh;
+  document.getElementById('strat-list-main').innerHTML = sh;
 
   // ── Connections (tucked) ──
   let ch = '';
@@ -903,7 +889,7 @@ function renderState(s) {
     ch += `<div class="cfg-row"><div style="display:flex;align-items:center;gap:4px;"><div style="width:4px;height:4px;border-radius:50%;background:${dot};"></div><span style="color:${br.connected?'#bbb':'#555'};">${esc(br.name||id)}</span></div><span style="color:#555;">${eql}</span></div>`;
   }
   if (!ch) ch = '<div class="cfg-row"><span style="color:#555;">None</span></div>';
-  document.getElementById('conn-list').innerHTML = ch;
+  document.getElementById('conn-list-main').innerHTML = ch;
 
   // ── Open trades ──
   const ot = Object.entries(s.active_trades||{}).filter(([k,v])=>v.status==='OPEN'||v.status==='SIM');
