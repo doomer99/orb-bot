@@ -31,6 +31,7 @@ class BaseStrategy(ABC):
         self.enabled = True
         self._trained = False
         self._last_signal = None
+        self._last_signal_date = None
         self._today_traded = False
         self._trade_log = []      # list of dicts for history
 
@@ -73,6 +74,7 @@ class BaseStrategy(ABC):
         """Called at midnight to reset for the new day."""
         self._today_traded = False
         self._last_signal = None
+        self._last_signal_date = None
 
     @property
     def is_ready(self) -> bool:
