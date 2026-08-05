@@ -1,115 +1,482 @@
-# config.py — All environment variables and routing
-import os
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Broadbent Capital</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'JetBrains Mono',monospace;background:#0d0d14;color:#ccc;font-size:11px;overflow-x:hidden;}
+.wrap{padding:10px 28px 14px;max-width:1400px;margin:0 auto;}
 
-SIM_MODE = os.environ.get("SIM_MODE", "true").lower() == "true"
-DAILY_LOSS_LIMIT = float(os.environ.get("DAILY_LOSS_LIMIT", "1000"))
-DAILY_LOSS_BUFFER = float(os.environ.get("DAILY_LOSS_BUFFER", "200"))
+.top{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#12121e;border:1px solid #1e1e2e;border-radius:6px;margin-bottom:6px;}
+.brand{font-size:17px;font-weight:700;color:#e0e0e0;letter-spacing:2px;}
+.top-left{display:flex;align-items:center;gap:20px;}
+.sep{color:#333;}
+.badge-live{font-size:12px;color:#4ade80;font-weight:500;}
+.badge-sim{font-size:12px;color:#fbbf24;font-weight:500;}
+.badge-status{font-size:10px;padding:2px 8px;border-radius:3px;}
+.badge-pre{background:#422006;color:#fbbf24;border:1px solid #92400e;}
+.badge-open{background:#14532d;color:#4ade80;border:1px solid #166534;}
+.badge-closed{background:#1a1a28;color:#555;border:1px solid #252530;}
+.clocks{display:flex;align-items:center;gap:14px;}
+.clock-item{text-align:center;}
+.clock-city{font-size:9px;color:#555;letter-spacing:0.5px;}
+.clock-time{font-size:13px;color:#e0e0e0;font-weight:500;}
+.clock-time-dim{font-size:13px;color:#888;font-weight:500;}
+.clock-sep{width:1px;height:24px;background:#252530;}
 
-BROKERS = {}
+.metrics{display:grid;grid-template-columns:repeat(6,1fr);margin-bottom:10px;}
+.mc{padding:5px 10px;background:#12121e;border-right:1px solid #1e1e2e;border-bottom:1px solid #1e1e2e;}
+.mc:last-child{border-right:none;}
+.mc-l{font-size:9px;color:#555;letter-spacing:0.5px;}
+.mc-v{font-size:13px;font-weight:500;color:#e0e0e0;}
+.grn{color:#4ade80!important;}
+.red{color:#f87171!important;}
+.ylw{color:#fbbf24!important;}
 
-if os.environ.get("TRADIER_TOKEN") and os.environ.get("TRADIER_ACCOUNT"):
-    BROKERS["tradier_sandbox"] = {
-        "type": "tradier", "name": "Tradier Sandbox",
-        "token": os.environ["TRADIER_TOKEN"],
-        "account_id": os.environ["TRADIER_ACCOUNT"],
-        "sandbox": os.environ.get("TRADIER_SANDBOX", "true").lower() == "true",
-    }
+.three{display:grid;grid-template-columns:180px 1fr 200px;gap:10px;margin-bottom:10px;}
+.col{display:flex;flex-direction:column;gap:8px;}
 
-if os.environ.get("TRADIER_LIVE_ACCOUNT"):
-    BROKERS["tradier_live"] = {
-        "type": "tradier", "name": "Tradier Live",
-        "token": os.environ.get("TRADIER_LIVE_TOKEN", ""),
-        "account_id": os.environ["TRADIER_LIVE_ACCOUNT"],
-        "sandbox": False,
-    }
+.panel{background:#12121e;border:1px solid #1e1e2e;border-radius:4px;overflow:hidden;}
+.p-hdr{padding:6px 10px;border-bottom:1px solid #1e1e2e;display:flex;justify-content:space-between;align-items:center;}
+.p-ttl{font-size:10px;font-weight:500;color:#e0e0e0;letter-spacing:0.5px;}
+.p-ttl-s{font-size:9px;font-weight:500;color:#555;letter-spacing:0.5px;}
+.new-btn{font-size:8px;padding:1px 5px;background:transparent;color:#60a5fa;border:1px solid #1e3a5f;border-radius:3px;cursor:pointer;font-family:inherit;}
+.new-btn:hover{background:#1e1e2e;}
 
-if os.environ.get("P1_WEBHOOK_URL"):
-    BROKERS["topstep"] = {
-        "type": "webhook", "name": "TopStep (TradersPost)",
-        "webhook_url": os.environ["P1_WEBHOOK_URL"],
-        "password": os.environ.get("P1_PASSWORD", ""),
-        "ticker": os.environ.get("P1_TICKER", "MES"),
-        "asset_class": os.environ.get("P1_ASSET_CLASS", "futures"),
-    }
+.bk{padding:6px 8px;border-bottom:1px solid #1a1a28;font-size:10px;}
+.bk-on{border-left:3px solid #4ade80;}
+.bk-off{border-left:3px solid transparent;}
+.bk-nm{font-weight:500;color:#e0e0e0;}
+.bk-mt{color:#555;margin-top:1px;}
+.tag{font-size:8px;padding:1px 4px;border-radius:2px;display:inline-block;margin-right:2px;margin-top:3px;}
+.tag-a{background:#1e3a5f;color:#60a5fa;}
+.tag-d{background:#1a1a28;color:#888;}
 
-if os.environ.get("P2_WEBHOOK_URL"):
-    BROKERS["prop_firm_2"] = {
-        "type": "webhook", "name": "Prop Firm 2",
-        "webhook_url": os.environ["P2_WEBHOOK_URL"],
-        "password": os.environ.get("P2_PASSWORD", ""),
-        "ticker": os.environ.get("P2_TICKER", "MES"),
-        "asset_class": os.environ.get("P2_ASSET_CLASS", "futures"),
-    }
+.cfg-row{display:flex;justify-content:space-between;padding:2px 8px;font-size:9px;}
 
-if os.environ.get("P3_WEBHOOK_URL"):
-    BROKERS["prop_firm_3"] = {
-        "type": "webhook", "name": "Prop Firm 3",
-        "webhook_url": os.environ["P3_WEBHOOK_URL"],
-        "password": os.environ.get("P3_PASSWORD", ""),
-        "ticker": os.environ.get("P3_TICKER", "MES"),
-        "asset_class": os.environ.get("P3_ASSET_CLASS", "futures"),
-    }
+.act-row{display:flex;gap:3px;}
+.act{padding:2px 5px;font-size:8px;font-family:inherit;background:#12121e;color:#555;border:1px solid #1e1e2e;border-radius:2px;cursor:pointer;}
+.act:hover{color:#888;border-color:#333;}
+.act-d{background:#2a1515;color:#f87171;border-color:#4a2020;}
 
-def _route(strategy_key, defaults):
-    return {
-        "broker": defaults.get("broker", ""),
-        "enabled": defaults.get("enabled", True),
-        "symbol": defaults.get("symbol", "SPY"),
-        "quantity": defaults.get("quantity", 1),
-    }
+.chart-toolbar{padding:6px 12px;border-bottom:1px solid #1e1e2e;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.chart-sym{font-size:12px;font-weight:500;color:#e0e0e0;}
+.tb{padding:2px 6px;font-size:9px;font-family:inherit;background:transparent;color:#555;border:1px solid #1e1e2e;border-radius:2px;cursor:pointer;}
+.tb:hover{color:#888;border-color:#333;}
+.tb-on{background:#1e3a5f;color:#60a5fa;border-color:#2a4a6f;}
+.vsep{width:1px;height:14px;background:#1e1e2e;}
 
-# Default routes — just fallbacks. Real routing is managed from the dashboard
-# via portfolios and allocations. These only apply if a strategy has no
-# portfolio or allocation assigned.
-ROUTES = {
-    "Nour ML": _route("NOUR", {"broker": "tradier_sandbox", "enabled": True, "symbol": "SPY", "quantity": 1}),
+.intel-item{padding:5px 10px;border-bottom:1px solid #1a1a28;font-size:9px;}
+.intel-tag{padding:0 4px;border-radius:2px;display:inline-block;font-size:8px;}
+.intel-flow{background:#1e3a5f;color:#60a5fa;}
+.intel-news{background:#1a1a28;color:#888;}
+.intel-macro{background:#1a1a28;color:#888;}
+.intel-econ{background:#422006;color:#fbbf24;}
+
+.bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.b-hdr{padding:5px 10px;border-bottom:1px solid #1e1e2e;display:flex;justify-content:space-between;}
+.b-ttl{font-size:10px;font-weight:500;color:#e0e0e0;letter-spacing:0.5px;}
+.b-sum{font-size:9px;}
+.b-row{padding:3px 10px;display:flex;justify-content:space-between;font-size:9px;border-bottom:1px solid #151520;}
+.b-row:last-child{border-bottom:none;}
+.log-l{padding:2px 10px;font-size:9px;color:#555;line-height:1.7;}
+
+.cb-banner{padding:8px 18px;background:#2a1515;color:#f87171;font-size:11px;border-bottom:1px solid #4a2020;display:none;margin:0 -28px;padding-left:28px;}
+
+.empty{padding:14px 10px;text-align:center;font-size:10px;color:#444;}
+.countdown{color:#60a5fa;margin-top:2px;}
+</style>
+</head>
+<body>
+<div id="cb-banner" class="cb-banner">CIRCUIT BREAKER ACTIVE — all trading halted</div>
+<div class="wrap">
+
+<!-- Top bar -->
+<div class="top">
+  <div class="top-left">
+    <span class="brand">BROADBENT CAPITAL</span>
+    <span class="sep">|</span>
+    <span id="mode-badge" class="badge-live">LIVE</span>
+    <span class="sep">|</span>
+    <span id="mkt-status" class="badge-status badge-pre">PRE-MARKET</span>
+  </div>
+  <div class="clocks">
+    <div class="clock-item"><div class="clock-city">NEW YORK</div><div id="ck-ny" class="clock-time">--:--</div></div>
+    <div class="clock-sep"></div>
+    <div class="clock-item"><div class="clock-city">LONDON</div><div id="ck-ld" class="clock-time-dim">--:--</div></div>
+    <div class="clock-sep"></div>
+    <div class="clock-item"><div class="clock-city">TOKYO</div><div id="ck-tk" class="clock-time-dim">--:--</div></div>
+  </div>
+</div>
+
+<!-- Metrics -->
+<div class="metrics" id="metrics"></div>
+
+<!-- Three column -->
+<div class="three">
+
+  <!-- LEFT -->
+  <div class="col" id="left-col">
+    <div class="panel">
+      <div class="p-hdr"><span class="p-ttl">BOOKS</span><button class="new-btn" onclick="showWizard()">+ NEW</button></div>
+      <div id="books-list"></div>
+    </div>
+    <div class="panel">
+      <div class="p-hdr"><span class="p-ttl-s">STRATEGIES</span></div>
+      <div id="strat-list"></div>
+    </div>
+    <div class="panel">
+      <div class="p-hdr"><span class="p-ttl-s">CONNECTIONS</span></div>
+      <div id="conn-list"></div>
+    </div>
+    <div class="act-row">
+      <button class="act act-d" onclick="fetch('/api/circuit-breaker/activate',{method:'POST'}).then(poll)">halt</button>
+      <button class="act">close all</button>
+      <button class="act">disable</button>
+      <button class="act">export</button>
+    </div>
+  </div>
+
+  <!-- CENTER: TradingView -->
+  <div>
+    <div class="panel" style="height:100%;display:flex;flex-direction:column;">
+      <div class="chart-toolbar">
+        <span class="chart-sym" id="chart-sym">SPY</span>
+        <span id="chart-price" class="grn" style="font-size:11px;">--</span>
+        <div class="vsep"></div>
+        <button class="tb tb-on" onclick="setTF('1')">1m</button>
+        <button class="tb" onclick="setTF('5')">5m</button>
+        <button class="tb" onclick="setTF('15')">15m</button>
+        <button class="tb" onclick="setTF('60')">1h</button>
+        <button class="tb" onclick="setTF('D')">1D</button>
+        <div class="vsep"></div>
+        <button class="tb" onclick="setSym('SPY')">SPY</button>
+        <button class="tb" onclick="setSym('QQQ')">QQQ</button>
+        <button class="tb" onclick="setSym('GLD')">GLD</button>
+        <button class="tb" onclick="setSym('ES1!')">ES</button>
+        <button class="tb" onclick="setSym('NQ1!')">NQ</button>
+      </div>
+      <div id="tv-chart" style="flex:1;min-height:320px;"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="col">
+    <div class="panel">
+      <div class="p-hdr"><span class="p-ttl">BRIEFING</span></div>
+      <div id="briefing" style="padding:8px 10px;font-size:10px;line-height:1.7;color:#888;">Loading...</div>
+    </div>
+    <div class="panel">
+      <div class="p-hdr"><span class="p-ttl">CALENDAR</span></div>
+      <div id="calendar" style="padding:4px 10px;font-size:9px;color:#888;">Loading...</div>
+    </div>
+    <div class="panel">
+      <div class="p-hdr"><span class="p-ttl">INTEL</span></div>
+      <div id="intel">
+        <div class="intel-item"><span class="intel-tag intel-flow">FLOW</span> <span style="color:#555;">Loading...</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="p-hdr"><span class="p-ttl">EARNINGS</span></div>
+      <div id="earnings" style="padding:4px 10px;font-size:9px;color:#888;">Loading...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom row -->
+<div class="bottom">
+  <div class="panel">
+    <div class="b-hdr"><span class="b-ttl">OPEN</span><span class="b-sum" id="open-sum" style="color:#555;">0</span></div>
+    <div id="open-body"><div class="empty">Waiting for signal<div class="countdown" id="countdown"></div></div></div>
+  </div>
+  <div class="panel">
+    <div class="b-hdr"><span class="b-ttl">RECENT</span><span class="b-sum grn" id="recent-sum">—</span></div>
+    <div id="recent-body"><div class="empty">No trades yet</div></div>
+  </div>
+  <div class="panel">
+    <div class="b-hdr"><span class="b-ttl">SYSTEM</span></div>
+    <div id="log-body"></div>
+  </div>
+</div>
+
+</div>
+
+<!-- Wizard overlay -->
+<div id="wizard-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:100;display:none;align-items:center;justify-content:center;">
+  <div id="wizard-content" style="background:#12121e;border:1px solid #1e1e2e;border-radius:6px;padding:20px;width:400px;max-height:80vh;overflow-y:auto;"></div>
+</div>
+
+<!-- TradingView Widget -->
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<script>
+let STATE = {};
+let currentSym = 'SPY';
+let currentTF = '5';
+let tvWidget = null;
+
+function initChart() {
+  document.getElementById('tv-chart').innerHTML = '';
+  tvWidget = new TradingView.widget({
+    container_id: 'tv-chart',
+    symbol: currentSym,
+    interval: currentTF,
+    theme: 'dark',
+    style: '1',
+    locale: 'en',
+    toolbar_bg: '#12121e',
+    enable_publishing: false,
+    hide_top_toolbar: true,
+    hide_legend: false,
+    save_image: false,
+    hide_volume: false,
+    allow_symbol_change: false,
+    backgroundColor: '#0d0d14',
+    gridColor: '#1a1a28',
+    width: '100%',
+    height: '100%',
+    studies: ['STD;Stochastic_RSI'],
+  });
 }
 
-# Auto-create allocations for prop firm connections
-PROP_ALLOCATIONS = {}
-if "topstep" in BROKERS:
-    PROP_ALLOCATIONS["Nour ML TopStep"] = {
-        "strategy": "Nour ML",
-        "broker": "topstep",
-        "symbol": os.environ.get("P1_TICKER", "MES1!"),
-        "quantity": int(os.environ.get("P1_QUANTITY", "1")),
-        "allocation_pct": 100.0,
-        "enabled": os.environ.get("P1_ENABLED", "true").lower() == "true",
-    }
-if "prop_firm_2" in BROKERS:
-    PROP_ALLOCATIONS["Nour ML Prop2"] = {
-        "strategy": "Nour ML",
-        "broker": "prop_firm_2",
-        "symbol": os.environ.get("P2_TICKER", "MES1!"),
-        "quantity": int(os.environ.get("P2_QUANTITY", "1")),
-        "allocation_pct": 100.0,
-        "enabled": os.environ.get("P2_ENABLED", "true").lower() == "true",
-    }
-if "prop_firm_3" in BROKERS:
-    PROP_ALLOCATIONS["Nour ML Prop3"] = {
-        "strategy": "Nour ML",
-        "broker": "prop_firm_3",
-        "symbol": os.environ.get("P3_TICKER", "MES1!"),
-        "quantity": int(os.environ.get("P3_QUANTITY", "1")),
-        "allocation_pct": 100.0,
-        "enabled": os.environ.get("P3_ENABLED", "true").lower() == "true",
-    }
+function setSym(s) {
+  currentSym = s;
+  document.getElementById('chart-sym').textContent = s;
+  initChart();
+}
 
-DEFAULT_ROUTE = {"broker": "tradier_sandbox", "enabled": False, "symbol": "SPY", "quantity": 1}
+function setTF(t) {
+  currentTF = t;
+  document.querySelectorAll('.chart-toolbar .tb').forEach(b => b.classList.remove('tb-on'));
+  event.target.classList.add('tb-on');
+  initChart();
+}
 
-def discover_strategies():
-    import importlib, pkgutil, strategies
-    from strategies.base import BaseStrategy
-    found = []
-    for importer, modname, ispkg in pkgutil.iter_modules(strategies.__path__):
-        if modname == "base":
-            continue
-        try:
-            mod = importlib.import_module(f"strategies.{modname}")
-            for attr_name in dir(mod):
-                attr = getattr(mod, attr_name)
-                if isinstance(attr, type) and issubclass(attr, BaseStrategy) and attr is not BaseStrategy:
-                    found.append(attr)
-        except Exception as e:
-            print(f"Could not load strategy '{modname}': {e}")
-    return found
+function updateClocks() {
+  const fmt = (tz) => {
+    const d = new Date();
+    return d.toLocaleString('en-US', {timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: true});
+  };
+  document.getElementById('ck-ny').textContent = fmt('America/New_York');
+  document.getElementById('ck-ld').textContent = fmt('Europe/London');
+  document.getElementById('ck-tk').textContent = fmt('Asia/Tokyo');
+
+  const ny = new Date(new Date().toLocaleString('en-US', {timeZone: 'America/New_York'}));
+  const h = ny.getHours(), m = ny.getMinutes();
+  const el = document.getElementById('mkt-status');
+  if (ny.getDay() === 0 || ny.getDay() === 6) {
+    el.textContent = 'WEEKEND'; el.className = 'badge-status badge-closed';
+  } else if (h < 4) {
+    el.textContent = 'OVERNIGHT'; el.className = 'badge-status badge-closed';
+  } else if (h < 9 || (h === 9 && m < 30)) {
+    el.textContent = 'PRE-MARKET'; el.className = 'badge-status badge-pre';
+  } else if (h < 16) {
+    el.textContent = 'MARKET OPEN'; el.className = 'badge-status badge-open';
+  } else if (h < 20) {
+    el.textContent = 'AFTER HOURS'; el.className = 'badge-status badge-pre';
+  } else {
+    el.textContent = 'CLOSED'; el.className = 'badge-status badge-closed';
+  }
+
+  const target = 9 * 60 + 31;
+  const now = h * 60 + m;
+  const cd = document.getElementById('countdown');
+  if (cd) {
+    if (now < target && h >= 4) {
+      const diff = target - now;
+      cd.textContent = 'T-' + Math.floor(diff / 60) + ':' + String(diff % 60).padStart(2, '0');
+    } else { cd.textContent = ''; }
+  }
+}
+setInterval(updateClocks, 1000);
+updateClocks();
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+async function poll() {
+  try {
+    const r = await fetch('/api/state');
+    STATE = await r.json();
+    render(STATE);
+  } catch(e) {}
+}
+
+function render(s) {
+  const badge = document.getElementById('mode-badge');
+  badge.textContent = s.sim_mode ? 'SIM' : 'LIVE';
+  badge.className = s.sim_mode ? 'badge-sim' : 'badge-live';
+
+  const cb = document.getElementById('cb-banner');
+  cb.style.display = s.circuit_breaker ? 'block' : 'none';
+
+  const bk = Object.values(s.brokers || {});
+  const eq = bk.reduce((a, b) => a + (b.connected ? (b.equity||0) : 0), 0);
+  const dp = bk.reduce((a, b) => a + (b.connected ? (b.day_pnl||0) : 0), 0);
+  const oc = Object.values(s.active_trades||{}).filter(t => t.status==='OPEN'||t.status==='SIM').length;
+  const sc = Object.values(s.strategies||{}).filter(x => x.enabled).length;
+  const bc = Object.keys(s.portfolios||{}).length + Object.keys(s.allocations||{}).length;
+  const sg = (s.log||[]).filter(l => l.toLowerCase().includes('signal')).length;
+  const pc = dp >= 0 ? 'grn' : 'red';
+  document.getElementById('metrics').innerHTML = `
+    <div class="mc"><div class="mc-l">NAV</div><div class="mc-v">$${eq.toLocaleString()}</div></div>
+    <div class="mc"><div class="mc-l">DAY P&L</div><div class="mc-v ${pc}">$${dp>=0?'+':''}${dp.toFixed(2)}</div></div>
+    <div class="mc"><div class="mc-l">OPEN POS</div><div class="mc-v">${oc}</div></div>
+    <div class="mc"><div class="mc-l">STRATEGIES</div><div class="mc-v">${sc}</div></div>
+    <div class="mc"><div class="mc-l">BOOKS</div><div class="mc-v">${bc}</div></div>
+    <div class="mc"><div class="mc-l">SIGNALS</div><div class="mc-v">${sg}</div></div>`;
+
+  // Books
+  let bh = '';
+  for (const [n, p] of Object.entries(s.portfolios||{})) {
+    const tags = p.sizing_mode==='risk_parity' ? '<span class="tag tag-a">AUTO-BAL</span>' : '';
+    bh += `<div class="bk bk-on"><div class="bk-nm">${n}</div><div class="bk-mt">${p.broker}</div><div>${tags}<span class="tag tag-d">${p.risk_pct}%</span></div><div class="bk-mt">${(p.strategies||[]).length} strats</div></div>`;
+  }
+  for (const [n, a] of Object.entries(s.allocations||{})) {
+    const act = s.active_trades && s.active_trades[n];
+    bh += `<div class="bk ${act?'bk-on':'bk-off'}"><div class="bk-nm">${n}</div><div class="bk-mt">${a.broker}</div><div><span class="tag tag-d">SOLO</span><span class="tag tag-d">${a.allocation_pct}%</span><span class="tag tag-d">${a.quantity}x ${a.symbol}</span></div></div>`;
+  }
+  const booked = new Set();
+  for (const p of Object.values(s.portfolios||{})) (p.strategies||[]).forEach(x=>booked.add(x));
+  for (const a of Object.keys(s.allocations||{})) booked.add(a);
+  for (const [n, sr] of Object.entries(s.strategies||{})) {
+    if (booked.has(n)) continue;
+    const act = s.active_trades && s.active_trades[n];
+    bh += `<div class="bk ${act?'bk-on':'bk-off'}"><div style="display:flex;justify-content:space-between;"><span class="bk-nm">${n}</span><span style="color:${sr.enabled?'#4ade80':'#555'};font-size:9px;">${sr.enabled?'ON':'OFF'}</span></div><div class="bk-mt">${sr.broker||'none'}</div></div>`;
+  }
+  document.getElementById('books-list').innerHTML = bh;
+
+  // Strategies
+  let sh = '';
+  for (const [n, sr] of Object.entries(s.strategies||{})) {
+    const wr = sr.stats ? sr.stats.win_rate||0 : 0;
+    sh += `<div class="cfg-row"><span style="color:${sr.enabled?'#bbb':'#555'};">${n}</span><span style="color:#555;">${wr}%</span></div>`;
+  }
+  document.getElementById('strat-list').innerHTML = sh;
+
+  // Connections
+  let ch = '';
+  for (const [id, br] of Object.entries(s.brokers||{})) {
+    const dot = br.connected ? '#4ade80' : '#555';
+    const eql = br.equity > 0 ? '$'+Math.round(br.equity/1000)+'k' : 'OFF';
+    ch += `<div class="cfg-row"><div style="display:flex;align-items:center;gap:4px;"><div style="width:4px;height:4px;border-radius:50%;background:${dot};"></div><span style="color:${br.connected?'#bbb':'#555'};">${br.name||id}</span></div><span style="color:#555;">${eql}</span></div>`;
+  }
+  document.getElementById('conn-list').innerHTML = ch;
+
+  // Open
+  const ot = Object.entries(s.active_trades||{}).filter(([k,v])=>v.status==='OPEN'||v.status==='SIM');
+  document.getElementById('open-sum').textContent = ot.length;
+  if (ot.length === 0) {
+    document.getElementById('open-body').innerHTML = '<div class="empty">Waiting for signal<div class="countdown" id="countdown"></div></div>';
+  } else {
+    let oh = '';
+    for (const [n, t] of ot) {
+      const dc = (t.direction==='UP'||t.direction==='LONG') ? 'grn' : 'red';
+      const sr = s.strategies[n]||{};
+      const at = sr.active_trade||{};
+      oh += `<div class="b-row"><span style="color:#bbb;">${n} <span class="${dc}">${t.direction}</span></span><span style="color:#888;">${at.entry_time||'—'}</span></div>`;
+    }
+    document.getElementById('open-body').innerHTML = oh;
+  }
+
+  // Recent (closed from log)
+  const cl = (s.log||[]).filter(l=>l.toLowerCase().includes('closed'));
+  document.getElementById('recent-sum').textContent = cl.length + ' today';
+  if (cl.length > 0) {
+    document.getElementById('recent-body').innerHTML = cl.slice(-5).reverse().map(l=>`<div class="b-row"><span style="color:#888;">${esc(l)}</span></div>`).join('');
+  } else {
+    document.getElementById('recent-body').innerHTML = '<div class="empty">No trades yet</div>';
+  }
+
+  // Log
+  const logs = (s.log||[]).slice(-8).reverse();
+  let lh = '';
+  for (const l of logs) {
+    let c = '#555';
+    if (l.toLowerCase().includes('filled')||l.includes('FILL')) c = '#4ade80';
+    else if (l.toLowerCase().includes('signal')) c = '#fbbf24';
+    else if (l.toLowerCase().includes('failed')||l.toLowerCase().includes('error')) c = '#f87171';
+    lh += `<div class="log-l" style="color:${c};">${esc(l)}</div>`;
+  }
+  if (!logs.length) lh = '<div class="log-l">No activity</div>';
+  document.getElementById('log-body').innerHTML = lh;
+}
+
+// Wizard
+function showWizard() {
+  const o = document.getElementById('wizard-overlay');
+  o.style.display = 'flex';
+  document.getElementById('wizard-content').innerHTML = `
+    <div style="font-size:13px;font-weight:500;color:#e0e0e0;margin-bottom:14px;letter-spacing:0.5px;">NEW BOOK</div>
+    <div style="cursor:pointer;border:1px solid #1e1e2e;border-radius:6px;padding:12px;margin-bottom:6px;" onclick="wizSolo()">
+      <div style="font-size:12px;font-weight:500;color:#e0e0e0;margin-bottom:3px;">Single strategy</div>
+      <div style="font-size:10px;color:#888;">One strategy, one account, set your allocation.</div>
+      <div style="margin-top:6px;"><span class="tag tag-d">SOLO</span><span class="tag tag-d">10-100%</span></div>
+    </div>
+    <div style="cursor:pointer;border:1px solid #1e1e2e;border-radius:6px;padding:12px;margin-bottom:6px;" onclick="wizPort()">
+      <div style="font-size:12px;font-weight:500;color:#e0e0e0;margin-bottom:3px;">Portfolio</div>
+      <div style="font-size:10px;color:#888;">Multiple strategies, auto-balanced risk across assets.</div>
+      <div style="margin-top:6px;"><span class="tag tag-a">AUTO-BAL</span><span class="tag tag-d">RISK PARITY</span></div>
+    </div>
+    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;background:transparent;color:#555;border:1px solid #252530;border-radius:4px;cursor:pointer;margin-top:4px;" onclick="hideWiz()">CANCEL</button>`;
+}
+function hideWiz(){document.getElementById('wizard-overlay').style.display='none';}
+
+function wizSolo(){
+  const st=Object.keys(STATE.strategies||{});
+  const br=Object.entries(STATE.brokers||{});
+  const sy=['SPY','QQQ','TSLA','NVDA','AAPL','AMZN','GOOGL','META','MSFT','GLD','MES1!','MNQ1!'];
+  document.getElementById('wizard-content').innerHTML=`
+    <div style="font-size:13px;font-weight:500;color:#e0e0e0;margin-bottom:14px;">SINGLE STRATEGY</div>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">STRATEGY</div>
+    <select id="ws" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">${st.map(s=>'<option>'+s+'</option>').join('')}</select>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">ACCOUNT</div>
+    <select id="wb" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">${br.map(([id,b])=>'<option value="'+id+'">'+(b.name||id)+'</option>').join('')}</select>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">SYMBOL</div>
+    <select id="wy" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">${sy.map(s=>'<option>'+s+'</option>').join('')}</select>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">QUANTITY</div>
+    <input id="wq" type="number" value="1" min="1" style="width:80px;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">ALLOCATION</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;"><input id="wa" type="range" min="10" max="100" step="10" value="100" style="flex:1;" oninput="document.getElementById('wav').textContent=this.value+'%'"><span id="wav" style="color:#e0e0e0;min-width:40px;text-align:right;">100%</span></div>
+    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;font-weight:500;background:#1e3a5f;color:#60a5fa;border:1px solid #2a4a6f;border-radius:4px;cursor:pointer;" onclick="createSolo()">CREATE</button>
+    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;background:transparent;color:#555;border:1px solid #252530;border-radius:4px;cursor:pointer;margin-top:4px;" onclick="showWizard()">BACK</button>`;
+}
+
+function wizPort(){
+  const st=Object.entries(STATE.strategies||{});
+  const br=Object.entries(STATE.brokers||{});
+  document.getElementById('wizard-content').innerHTML=`
+    <div style="font-size:13px;font-weight:500;color:#e0e0e0;margin-bottom:14px;">PORTFOLIO</div>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">NAME</div>
+    <input id="pn" type="text" placeholder="e.g. Morning Scalps" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">ACCOUNT</div>
+    <select id="pb" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">${br.map(([id,b])=>'<option value="'+id+'">'+(b.name||id)+'</option>').join('')}</select>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">STRATEGIES</div>
+    <div style="border:1px solid #1e1e2e;border-radius:4px;overflow:hidden;margin-bottom:10px;">${st.map(([n,sr])=>{const wr=sr.stats?sr.stats.win_rate||0:0;return '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #1a1a28;cursor:pointer;font-size:10px;"><input type="checkbox" value="'+n+'" class="pcb"><span style="color:#e0e0e0;">'+n+'</span><span style="margin-left:auto;color:#555;">'+wr+'%</span></label>';}).join('')}</div>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">SIZING</div>
+    <select id="ps" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;"><option value="risk_parity">Risk parity (auto-balance)</option><option value="equal_contracts">Equal contracts</option><option value="weighted">Win rate weighted</option><option value="manual">Manual</option></select>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">RISK BUDGET</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;"><input id="pr" type="range" min="0.1" max="5" step="0.1" value="1.0" style="flex:1;" oninput="document.getElementById('prv').textContent=parseFloat(this.value).toFixed(1)+'%'"><span id="prv" style="color:#e0e0e0;min-width:40px;text-align:right;">1.0%</span></div>
+    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;font-weight:500;background:#1e3a5f;color:#60a5fa;border:1px solid #2a4a6f;border-radius:4px;cursor:pointer;" onclick="createPort()">CREATE PORTFOLIO</button>
+    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;background:transparent;color:#555;border:1px solid #252530;border-radius:4px;cursor:pointer;margin-top:4px;" onclick="showWizard()">BACK</button>`;
+}
+
+async function createSolo(){
+  await fetch('/api/allocation/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({strategy:document.getElementById('ws').value,broker:document.getElementById('wb').value,symbol:document.getElementById('wy').value,quantity:parseInt(document.getElementById('wq').value),allocation_pct:parseInt(document.getElementById('wa').value)})});
+  hideWiz();poll();
+}
+
+async function createPort(){
+  const checked=[...document.querySelectorAll('.pcb:checked')].map(c=>c.value);
+  await fetch('/api/portfolio/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('pn').value,broker:document.getElementById('pb').value,strategies:checked,sizing_mode:document.getElementById('ps').value,risk_pct:parseFloat(document.getElementById('pr').value)})});
+  hideWiz();poll();
+}
+
+// Init
+initChart();
+poll();
+setInterval(poll, 10000);
+</script>
+</body>
+</html>
