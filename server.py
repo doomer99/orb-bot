@@ -293,24 +293,19 @@ def terminal_ask(req: TerminalAskReq):
 # ══════════════════════════════════════════════
 #  SERVE DASHBOARD HTML
 # ══════════════════════════════════════════════
-@app.get("/check-html")
-def check_html():
-    with open("/app/dashboard.html", "r") as f:
-        first_200 = f.read(200)
-    return {"first_200_chars": first_200}
-    
-@app.get("/debug")
-def debug():
-    import os
-    base = os.path.dirname(os.path.abspath(__file__))
-    files = os.listdir(base)
-    return {
-        "base_dir": base,
-        "files": files,
-        "dashboard_exists": os.path.exists(os.path.join(base, "dashboard.html")),
-        "cwd": os.getcwd(),
-        "cwd_files": os.listdir(os.getcwd()),
-    }
+
+@app.get("/", response_class=HTMLResponse)
+def dashboard():
+    paths = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.html"),
+        "/app/dashboard.html",
+        "dashboard.html",
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            with open(p, "r") as f:
+                return f.read()
+    return HTMLResponse(f"<h1>dashboard.html not found</h1><p>Searched: {paths}</p>", status_code=500)
 
 
 # ══════════════════════════════════════════════
