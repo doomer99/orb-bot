@@ -4,7 +4,10 @@ from router import Router
 from config import discover_strategies
 
 router = Router()
+
+# Register all discovered strategies
 for StrategyClass in discover_strategies():
     router.register_strategy(StrategyClass())
 
+# Start the trading loop in a background thread
 threading.Thread(target=router.run, daemon=True).start()
