@@ -1,6 +1,7 @@
 # brokers/traderspost.py — Webhook broker (TradersPost → TopStep, prop firms)
 # Sends JSON payloads to a webhook URL
 
+import os
 import requests
 from .base import BaseBroker, OrderResult, AccountInfo
 
@@ -64,6 +65,14 @@ class TradersPostBroker(BaseBroker):
         self.ticker = config.get("ticker", "MES")
         self.asset_class = config.get("asset_class", "futures")  # futures, options, equity
 
+        # Optional: manual balance for display (TradersPost has no balance API)
+        # Set P1_BALANCE=101000 in env to show $101k on dashboard
+        self._manual_balance = float(os.environ.get("P1_BALANCE", "0"))
+
+        # Connection health tracking
+        self._last_ping_ok = False
+        self._last_ping_error = None
+
     def _map_symbol(self, symbol: str) -> str:
         """Translate symbols based on asset_class setting."""
         if not symbol:
@@ -75,22 +84,57 @@ class TradersPostBroker(BaseBroker):
         return symbol
 
     def connect(self) -> bool:
-        """Webhook brokers are 'connected' if URL is set."""
-        if self.webhook_url:
-            self._connected = True
-            self._last_error = None
-            return True
-        else:
+        """
+        Webhook brokers are 'connected' if URL is set.
+        Also does a lightweight check that the URL is reachable.
+        """
+        if not self.webhook_url:
             self._connected = False
             self._last_error = "No webhook URL configured"
             return False
 
+        # Verify the webhook endpoint is reachable with a HEAD/GET check
+        try:
+            # TradersPost webhooks respond to GET with a simple page
+            # We just check DNS + TLS resolve, not a full trade
+            r = requests.head(self.webhook_url, timeout=5, allow_redirects=True)
+            # Any response (even 405 Method Not Allowed) means the endpoint exists
+            self._connected = True
+            self._last_ping_ok = True
+            self._last_error = None
+            self._last_ping_error = None
+            return True
+        except requests.exceptions.ConnectionError:
+            # URL exists but endpoint down — still mark as configured
+            self._connected = True
+            self._last_ping_ok = False
+            self._last_ping_error = "Endpoint unreachable"
+            self._last_error = None
+            return True
+        except Exception as e:
+            # URL is set, so technically configured
+            self._connected = True
+            self._last_ping_ok = False
+            self._last_ping_error = str(e)
+            self._last_error = None
+            return True
+
     def get_account_info(self) -> AccountInfo:
-        """Webhook brokers don't expose account info."""
+        """
+        Webhook brokers don't expose account info via API.
+        TradersPost has no public account API yet.
+
+        If P1_BALANCE is set in env, we display that as equity.
+        Otherwise, we return connected=True with zero equity
+        (dashboard will show 'ON' instead of a dollar amount).
+        """
+        if not self._connected:
+            return AccountInfo(connected=False, error="Not connected")
+
         return AccountInfo(
-            connected=self._connected,
-            error="Balance not available via webhook"
-                  if self._connected else "Not connected"
+            connected=True,
+            equity=self._manual_balance,
+            error=self._last_ping_error,
         )
 
     def place_order(self, direction: str, symbol: str = None,
