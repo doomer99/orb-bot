@@ -542,7 +542,9 @@ function renderState(s) {
   let ch = '';
   for (const [id, br] of Object.entries(s.brokers||{})) {
     const dot = br.connected ? '#4ade80' : '#555';
-    const eql = br.equity > 0 ? '$'+Math.round(br.equity/1000)+'k' : 'OFF';
+    const eql = br.equity > 0 ? '$'+Math.round(br.equity/1000)+'k' : (br.connected ? 'ON' : 'OFF');
+const eqlColor = br.equity > 0 ? '#4ade80' : (br.connected ? '#4ade80' : '#555');
+// ...use eqlColor on the span
     ch += `<div class="cfg-row"><div style="display:flex;align-items:center;gap:4px;"><div style="width:4px;height:4px;border-radius:50%;background:${dot};"></div><span style="color:${br.connected?'#bbb':'#555'};">${esc(br.name||id)}</span></div><span style="color:#555;">${eql}</span></div>`;
   }
   if (!ch) ch = '<div class="cfg-row"><span style="color:#555;">None</span></div>';
