@@ -9,7 +9,6 @@ from typing import List, Optional
 import requests as http_requests
 
 from main import router
-from portfolio import Portfolio, DirectAllocation
 
 app = FastAPI(title="Broadbent Capital")
 
@@ -18,7 +17,10 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-print(f"API Keys: Polygon={'YES' if POLYGON_API_KEY else 'NO'} | Gemini={'YES' if GEMINI_API_KEY else 'NO'} | DeepSeek={'YES' if DEEPSEEK_API_KEY else 'NO'} | Anthropic={'YES' if ANTHROPIC_API_KEY else 'NO'}")
+print(f"API Keys: Polygon={'YES' if POLYGON_API_KEY else 'NO'} | "
+      f"Gemini={'YES' if GEMINI_API_KEY else 'NO'} | "
+      f"DeepSeek={'YES' if DEEPSEEK_API_KEY else 'NO'} | "
+      f"Anthropic={'YES' if ANTHROPIC_API_KEY else 'NO'}")
 
 
 # ══════════════════════════════════════════════
@@ -42,100 +44,82 @@ def deactivate_cb():
     return {"ok": True}
 
 
-class CreateAllocationReq(BaseModel):
-    strategy: str
-    broker: str
-    symbol: str = "SPY"
-    quantity: int = 1
-    allocation_pct: float = 100.0
-
-
-@app.post("/api/allocation/create")
-def create_allocation(req: CreateAllocationReq):
-    alloc = DirectAllocation(req.strategy, {
-        "broker": req.broker,
-        "symbol": req.symbol,
-        "quantity": req.quantity,
-        "allocation_pct": req.allocation_pct,
-        "enabled": True,
-    })
-    router.allocations[req.strategy] = alloc
-    if req.strategy in router.strategies:
-        router.strategies[req.strategy].enabled = True
-    router.save_portfolio_config()
-    return {"ok": True}
-
+# ══════════════════════════════════════════════
+#  PORTFOLIO CRUD
+# ══════════════════════════════════════════════
 
 class CreatePortfolioReq(BaseModel):
     name: str
     broker: str
-    strategies: List[str]
-    sizing_mode: str = "risk_parity"
+    strategy: str
+    symbol: str = "SPY"
+    quantity: int = 1
     risk_pct: float = 1.0
+    max_daily_loss: float = 0
 
 
 @app.post("/api/portfolio/create")
 def create_portfolio(req: CreatePortfolioReq):
-    portfolio = Portfolio(req.name, {
-        "broker": req.broker,
-        "risk_pct": req.risk_pct,
-        "sizing_mode": req.sizing_mode,
-        "strategies": req.strategies,
-        "enabled": True,
-    })
-    router.portfolios[req.name] = portfolio
-    for sn in req.strategies:
-        if sn in router.strategies:
-            router.strategies[sn].enabled = True
-    router.save_portfolio_config()
-    return {"ok": True}
+    portfolio = router.create_portfolio(
+        name=req.name, broker=req.broker, strategy=req.strategy,
+        symbol=req.symbol, quantity=req.quantity,
+        risk_pct=req.risk_pct, max_daily_loss=req.max_daily_loss,
+    )
+    return {"ok": True, "portfolio": portfolio.to_dict()}
 
 
-@app.post("/api/book/{name}/toggle")
-def toggle_book(name: str):
+@app.delete("/api/portfolio/{name}")
+def delete_portfolio(name: str):
+    ok = router.delete_portfolio(name)
+    return {"ok": ok, "error": None if ok else "Not found"}
+
+
+@app.post("/api/portfolio/{name}/toggle")
+def toggle_portfolio(name: str):
     if name in router.portfolios:
-        router.portfolios[name].enabled = not router.portfolios[name].enabled
-        router.save_portfolio_config()
-        return {"ok": True, "enabled": router.portfolios[name].enabled}
-    if name in router.allocations:
-        router.allocations[name].enabled = not router.allocations[name].enabled
-        router.save_portfolio_config()
-        return {"ok": True, "enabled": router.allocations[name].enabled}
-    if name in router.strategies:
-        router.strategies[name].enabled = not router.strategies[name].enabled
-        router.log(f"Strategy [{name}] {'enabled' if router.strategies[name].enabled else 'disabled'} via dashboard")
-        return {"ok": True, "enabled": router.strategies[name].enabled}
+        p = router.portfolios[name]
+        p.enabled = not p.enabled
+        from portfolio import save_portfolios
+        save_portfolios(router.portfolios)
+        router.log(f"Portfolio [{name}] {'enabled' if p.enabled else 'disabled'} via dashboard")
+        return {"ok": True, "enabled": p.enabled}
     return {"ok": False, "error": "Not found"}
 
 
+class UpdatePortfolioReq(BaseModel):
+    risk_pct: Optional[float] = None
+    quantity: Optional[int] = None
+    max_daily_loss: Optional[float] = None
+    symbol: Optional[str] = None
+
+
+@app.put("/api/portfolio/{name}")
+def update_portfolio(name: str, req: UpdatePortfolioReq):
+    if name not in router.portfolios:
+        return {"ok": False, "error": "Not found"}
+    p = router.portfolios[name]
+    if req.risk_pct is not None:
+        p.risk_pct = req.risk_pct
+    if req.quantity is not None:
+        p.quantity = req.quantity
+    if req.max_daily_loss is not None:
+        p.max_daily_loss = req.max_daily_loss
+    if req.symbol is not None:
+        p.symbol = req.symbol
+    from portfolio import save_portfolios
+    save_portfolios(router.portfolios)
+    router.log(f"Portfolio [{name}] updated via dashboard")
+    return {"ok": True, "portfolio": p.to_dict()}
+
+
 # ══════════════════════════════════════════════
-#  SELL ALL / KILL ALL
+#  SELL / KILL
 # ══════════════════════════════════════════════
 
-class SellAllReq(BaseModel):
-    name: str
-
-
-@app.post("/api/portfolio/sell-all")
-def sell_all(req: SellAllReq):
-    closed = []
-    for trade_name, trade in list(router.active_trades.items()):
-        if trade["status"] not in ("OPEN", "SIM"):
-            continue
-        routing = router._resolve_route(trade_name)
-        belongs = False
-        if routing["type"] == "portfolio" and routing.get("portfolio") == req.name:
-            belongs = True
-        elif routing["type"] == "direct" and trade_name == req.name:
-            belongs = True
-        if req.name in router.portfolios:
-            if trade_name in router.portfolios[req.name].strategy_names:
-                belongs = True
-        if belongs:
-            router.log(f"SELL ALL [{req.name}] — closing [{trade_name}]")
-            router.close_order(trade_name)
-            closed.append(trade_name)
-    return {"ok": True, "closed": closed}
+@app.post("/api/portfolio/{name}/close")
+def close_portfolio_trade(name: str):
+    ok = router._close_order(name)
+    return {"ok": ok}
 
 
 @app.post("/api/kill-all")
@@ -203,15 +187,25 @@ def _build_terminal_context():
     positions = []
     for name, trade in state.get("active_trades", {}).items():
         if trade.get("status") in ("OPEN", "SIM"):
-            positions.append(f"  - {name}: {trade.get('direction', '?')} {trade.get('symbol', '?')}")
+            positions.append(f"  - {name}: {trade.get('direction', '?')} "
+                             f"{trade.get('symbol', '?')} x{trade.get('quantity', 1)}")
     brokers = []
     for bid, b in state.get("brokers", {}).items():
         if b.get("connected"):
-            brokers.append(f"  - {b.get('name', bid)}: equity=${b.get('equity', 0):,.0f}, day_pnl=${b.get('day_pnl', 0):,.2f}")
+            brokers.append(f"  - {b.get('name', bid)}: equity=${b.get('equity', 0):,.0f}, "
+                           f"day_pnl=${b.get('day_pnl', 0):,.2f}")
+    portfolios = []
+    for pname, p in state.get("portfolios", {}).items():
+        status = "enabled" if p.get("enabled") else "disabled"
+        traded = "traded" if p.get("today_traded") else "waiting"
+        portfolios.append(f"  - {pname}: {p.get('strategy', '?')} -> "
+                          f"{p.get('broker', '?')} ({p.get('symbol', '?')}) [{status}, {traded}]")
     return f"""Broadbent Capital trading system:
 Mode: {'SIM' if state.get('sim_mode') else 'LIVE'}
 Brokers:
-{chr(10).join(brokers) if brokers else '  None'}
+{chr(10).join(brokers) if brokers else '  None connected'}
+Portfolios:
+{chr(10).join(portfolios) if portfolios else '  None configured'}
 Open positions:
 {chr(10).join(positions) if positions else '  None'}
 Recent log:
@@ -223,7 +217,8 @@ def _call_ai(prompt, system_prompt=""):
         try:
             r = http_requests.post(
                 f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={"contents": [{"parts": [{"text": f"{system_prompt}\n\n{prompt}"}]}], "generationConfig": {"maxOutputTokens": 1000, "temperature": 0.7}},
+                json={"contents": [{"parts": [{"text": f"{system_prompt}\n\n{prompt}"}]}],
+                      "generationConfig": {"maxOutputTokens": 1000, "temperature": 0.7}},
                 timeout=30,
             )
             if r.status_code == 200:
@@ -238,8 +233,10 @@ def _call_ai(prompt, system_prompt=""):
             msgs.append({"role": "user", "content": prompt})
             r = http_requests.post(
                 "https://api.deepseek.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
-                json={"model": "deepseek-chat", "messages": msgs, "max_tokens": 1000, "temperature": 0.7},
+                headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+                          "Content-Type": "application/json"},
+                json={"model": "deepseek-chat", "messages": msgs,
+                      "max_tokens": 1000, "temperature": 0.7},
                 timeout=30,
             )
             if r.status_code == 200:
@@ -250,8 +247,12 @@ def _call_ai(prompt, system_prompt=""):
         try:
             r = http_requests.post(
                 "https://api.anthropic.com/v1/messages",
-                headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
-                json={"model": "claude-sonnet-4-6", "max_tokens": 1000, "system": system_prompt, "messages": [{"role": "user", "content": prompt}]},
+                headers={"x-api-key": ANTHROPIC_API_KEY,
+                          "anthropic-version": "2023-06-01",
+                          "Content-Type": "application/json"},
+                json={"model": "claude-sonnet-4-6", "max_tokens": 1000,
+                      "system": system_prompt,
+                      "messages": [{"role": "user", "content": prompt}]},
                 timeout=30,
             )
             if r.status_code == 200:
@@ -269,10 +270,13 @@ Keep it tight. Use specific numbers. Speak like a trading desk analyst."""
 @app.get("/api/terminal/briefing")
 def terminal_briefing():
     context = _build_terminal_context()
-    prompt = f"Generate today's trading briefing.\n\n{context}\n\nCover: overnight moves, sector rotation, opportunities, position analysis, risk flags, calendar."
+    prompt = (f"Generate today's trading briefing.\n\n{context}\n\n"
+              f"Cover: overnight moves, sector rotation, opportunities, "
+              f"position analysis, risk flags, calendar.")
     briefing = _call_ai(prompt, TERMINAL_SYSTEM_PROMPT)
     if not briefing:
-        return {"briefing": "No AI provider configured. Set GEMINI_API_KEY, DEEPSEEK_API_KEY, or ANTHROPIC_API_KEY."}
+        return {"briefing": "No AI provider configured. Set GEMINI_API_KEY, "
+                            "DEEPSEEK_API_KEY, or ANTHROPIC_API_KEY."}
     return {"briefing": briefing}
 
 
@@ -283,7 +287,8 @@ class TerminalAskReq(BaseModel):
 @app.post("/api/terminal/ask")
 def terminal_ask(req: TerminalAskReq):
     context = _build_terminal_context()
-    prompt = f"{context}\n\nUser question: {req.question}\n\nAnswer concisely with numbers and actionable insight."
+    prompt = (f"{context}\n\nUser question: {req.question}\n\n"
+              f"Answer concisely with numbers and actionable insight.")
     answer = _call_ai(prompt, TERMINAL_SYSTEM_PROMPT)
     if not answer:
         return {"answer": "No AI provider configured."}
@@ -305,7 +310,8 @@ def dashboard():
         if os.path.exists(p):
             with open(p, "r") as f:
                 return f.read()
-    return HTMLResponse(f"<h1>dashboard.html not found</h1><p>Searched: {paths}</p>", status_code=500)
+    return HTMLResponse(f"<h1>dashboard.html not found</h1><p>Searched: {paths}</p>",
+                        status_code=500)
 
 
 # ══════════════════════════════════════════════
