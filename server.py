@@ -293,7 +293,12 @@ def terminal_ask(req: TerminalAskReq):
 # ══════════════════════════════════════════════
 #  SERVE DASHBOARD HTML
 # ══════════════════════════════════════════════
-
+@app.get("/check-html")
+def check_html():
+    with open("/app/dashboard.html", "r") as f:
+        first_200 = f.read(200)
+    return {"first_200_chars": first_200}
+    
 @app.get("/debug")
 def debug():
     import os
