@@ -44,9 +44,10 @@ class Portfolio:
         """
         Size the position from equity and risk_pct.
         Returns number of contracts/shares.
+        If risk_pct is 0, uses fixed self.quantity instead.
         """
-        if equity <= 0:
-            return self.quantity  # fallback to static
+        if self.risk_pct <= 0 or equity <= 0:
+            return self.quantity  # fixed contract mode or no equity data
 
         risk_budget = equity * (self.risk_pct / 100.0)
         data = asset_data.get(self.symbol, {})
