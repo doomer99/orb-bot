@@ -167,7 +167,16 @@ class Router:
         self.portfolios[name] = portfolio
         # Enable the strategy if it wasn't already
         if strategy in self.strategies:
-            self.strategies[strategy].enabled = True
+            strat = self.strategies[strategy]
+            if not strat.enabled:
+                strat.enabled = True
+                # Initialize it now so it's ready immediately
+                try:
+                    self.log(f"Initializing [{strategy}] for new portfolio...")
+                    ok = strat.initialize()
+                    self.log(f"[{strategy}] {'ready' if ok else 'init failed'}")
+                except Exception as e:
+                    self.log(f"[{strategy}] init error: {e}")
         save_portfolios(self.portfolios)
         self.log(f"Portfolio [{name}] created: {strategy} -> {broker} ({symbol})")
         return portfolio
