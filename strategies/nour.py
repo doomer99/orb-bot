@@ -34,6 +34,9 @@ class NourStrategy(BaseStrategy):
         self.tradier_live_token = os.environ.get("TRADIER_LIVE_TOKEN", "")
         self.tradier_live_base = "https://api.tradier.com/v1"
 
+        # Signal caching (so multiple portfolios don't re-run the model)
+        self._last_signal_date = None
+
         # Model internals
         self._model = None
         self._scaler = None
@@ -331,13 +334,21 @@ class NourStrategy(BaseStrategy):
         return True
 
     def check_signal(self, current_time: datetime) -> Signal | None:
-        """Run the model at 9:31 AM."""
-        if self._today_traded or not self._trained:
+        """
+        Run the model at 9:31 AM.
+        Multiple portfolios may call this — the signal is cached for the day
+        so we only fetch data and predict once.
+        """
+        if not self._trained:
             return None
 
         now = current_time
         if not (now.hour == 9 and 31 <= now.minute <= 32):
             return None
+
+        # Return cached signal if we already ran today
+        if self._last_signal and self._last_signal_date == now.date():
+            return self._last_signal  # None if confidence was too low
 
         # Get today's data
         today_df = self._get_today_data()
@@ -363,12 +374,14 @@ class NourStrategy(BaseStrategy):
         conf = max(prob_up, 1 - prob_up)
         direction = "UP" if prob_up >= 0.5 else "DOWN"
 
+        # Mark that we've run today (even if confidence is too low)
+        self._last_signal_date = now.date()
+
         # Confidence gate
         if conf < self.conf_threshold:
-            self._today_traded = True
+            self._last_signal = None
             return None
 
-        self._today_traded = True
         signal = Signal(
             direction=direction,
             confidence=conf,
