@@ -388,16 +388,14 @@ Answer concisely and specifically. Use numbers, levels, and actionable insight."
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard():
-    html_path = os.path.join(os.path.dirname(__file__), "dashboard.html")
-    with open(html_path, "r") as f:
-        return f.read()
-
-
-# ── Start ──
-if __name__ == "__main__":
-    # Pulls Railway's network port allocation dynamically
-    port = int(os.environ.get("PORT", 8080))
-    
-    # Use the string reference format "filename:app_variable"
-    uvicorn.run("server:app", host="0.0.0.0", port=port, workers=1)
-
+    # Try multiple paths for Railway compatibility
+    paths = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "dashboard.html"),
+        "/app/dashboard.html",
+        "dashboard.html",
+    ]
+    for p in paths:
+        if os.path.exists(p):
+            with open(p, "r") as f:
+                return f.read()
+    return HTMLResponse(f"<h1>dashboard.html not found</h1><p>Searched: {paths}</p>", status_code=500)
