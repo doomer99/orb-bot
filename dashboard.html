@@ -204,7 +204,7 @@ function togglePort(btn) {
 
 function toggleBookAPI(name, btn) {
   togglePort(btn);
-  fetch('/api/book/' + encodeURIComponent(name) + '/toggle', { method: 'POST' }).then(() => poll());
+  fetch('/api/portfolio/' + encodeURIComponent(name) + '/toggle', { method: 'POST' }).then(() => poll());
 }
 
 // Portfolio detail expand/collapse
@@ -228,7 +228,7 @@ function sellAll(name) {
 
 function confirmSellAll(name) {
   document.getElementById('confirm-overlay').style.display = 'none';
-  fetch('/api/portfolio/sell-all', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name }) }).then(() => poll());
+  fetch('/api/portfolio/' + encodeURIComponent(name) + '/close', { method: 'POST' }).then(() => poll());
 }
 
 // Kill all
@@ -337,71 +337,113 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s; re
 function showWizard() {
   const o = document.getElementById('wizard-overlay');
   o.style.display = 'flex';
+  const st = Object.keys(STATE.strategies || {});
+  const br = Object.entries(STATE.brokers || {});
+  const sy = ['SPY','QQQ','TSLA','NVDA','AAPL','AMZN','GOOGL','META','MSFT','GLD','MES','MES1!','MNQ','MNQ1!'];
   document.getElementById('wizard-content').innerHTML = `
-    <div style="font-size:13px;font-weight:500;color:#e0e0e0;margin-bottom:14px;letter-spacing:0.5px;">NEW BOOK</div>
-    <div style="cursor:pointer;border:1px solid #1e1e2e;border-radius:6px;padding:12px;margin-bottom:6px;" onclick="wizSolo()">
-      <div style="font-size:12px;font-weight:500;color:#e0e0e0;margin-bottom:3px;">Single strategy</div>
-      <div style="font-size:10px;color:#888;">One strategy, one account, set your allocation.</div>
-      <div style="margin-top:6px;"><span class="tag tag-d">SOLO</span><span class="tag tag-d">10-100%</span></div>
+    <div style="font-size:13px;font-weight:500;color:#e0e0e0;margin-bottom:14px;letter-spacing:0.5px;">NEW PORTFOLIO</div>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">NAME</div>
+    <input id="wp-name" type="text" placeholder="e.g. TopStep MES" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">STRATEGY</div>
+    <select id="wp-strat" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">${st.map(s=>'<option>'+s+'</option>').join('')}</select>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">ACCOUNT</div>
+    <select id="wp-broker" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">${br.map(([id,b])=>'<option value="'+id+'">'+(b.name||id)+'</option>').join('')}</select>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">SYMBOL</div>
+    <select id="wp-sym" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">${sy.map(s=>'<option>'+s+'</option>').join('')}</select>
+    <div style="display:flex;gap:10px;margin-bottom:10px;">
+      <div style="flex:1;">
+        <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">SIZING MODE</div>
+        <select id="wp-mode" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;" onchange="toggleSizingMode()">
+          <option value="risk">Risk % of equity</option>
+          <option value="fixed">Fixed contracts</option>
+        </select>
+      </div>
     </div>
-    <div style="cursor:pointer;border:1px solid #1e1e2e;border-radius:6px;padding:12px;margin-bottom:6px;" onclick="wizPort()">
-      <div style="font-size:12px;font-weight:500;color:#e0e0e0;margin-bottom:3px;">Portfolio</div>
-      <div style="font-size:10px;color:#888;">Multiple strategies, auto-balanced risk across assets.</div>
-      <div style="margin-top:6px;"><span class="tag tag-a">AUTO-BAL</span><span class="tag tag-d">RISK PARITY</span></div>
+    <div id="wp-risk-fields">
+      <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">RISK % OF EQUITY</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><input id="wp-risk" type="range" min="0.5" max="5" step="0.5" value="2.0" style="flex:1;" oninput="document.getElementById('wp-risk-val').textContent=parseFloat(this.value).toFixed(1)+'%'"><span id="wp-risk-val" style="color:#e0e0e0;min-width:40px;text-align:right;">2.0%</span></div>
     </div>
+    <div id="wp-fixed-fields" style="display:none;">
+      <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">CONTRACTS / SHARES</div>
+      <input id="wp-qty" type="number" value="1" min="1" style="width:80px;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">
+    </div>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">MAX DAILY LOSS ($) <span style="color:#555;">— 0 = auto from risk %</span></div>
+    <input id="wp-maxloss" type="number" value="0" min="0" step="50" style="width:120px;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:14px;">
+    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;font-weight:500;background:#1e3a5f;color:#60a5fa;border:1px solid #2a4a6f;border-radius:4px;cursor:pointer;" onclick="createNewPortfolio()">CREATE PORTFOLIO</button>
     <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;background:transparent;color:#555;border:1px solid #252530;border-radius:4px;cursor:pointer;margin-top:4px;" onclick="hideWiz()">CANCEL</button>`;
+}
+
+function toggleSizingMode() {
+  const mode = document.getElementById('wp-mode').value;
+  document.getElementById('wp-risk-fields').style.display = mode === 'risk' ? 'block' : 'none';
+  document.getElementById('wp-fixed-fields').style.display = mode === 'fixed' ? 'block' : 'none';
 }
 
 function hideWiz() { document.getElementById('wizard-overlay').style.display = 'none'; }
 
-function wizSolo() {
-  const st = Object.keys(STATE.strategies || {});
-  const br = Object.entries(STATE.brokers || {});
-  const sy = ['SPY','QQQ','TSLA','NVDA','AAPL','AMZN','GOOGL','META','MSFT','GLD','MES1!','MNQ1!'];
+async function createNewPortfolio() {
+  const mode = document.getElementById('wp-mode').value;
+  const name = document.getElementById('wp-name').value.trim();
+  if (!name) { alert('Enter a portfolio name'); return; }
+  const body = {
+    name: name,
+    strategy: document.getElementById('wp-strat').value,
+    broker: document.getElementById('wp-broker').value,
+    symbol: document.getElementById('wp-sym').value,
+    quantity: mode === 'fixed' ? parseInt(document.getElementById('wp-qty').value) : 1,
+    risk_pct: mode === 'risk' ? parseFloat(document.getElementById('wp-risk').value) : 0,
+    max_daily_loss: parseFloat(document.getElementById('wp-maxloss').value) || 0,
+  };
+  await fetch('/api/portfolio/create', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  hideWiz(); poll();
+}
+
+function editPortfolio(name) {
+  const p = (STATE.portfolios||{})[name];
+  if (!p) return;
+  const o = document.getElementById('wizard-overlay');
+  o.style.display = 'flex';
   document.getElementById('wizard-content').innerHTML = `
-    <div style="font-size:13px;font-weight:500;color:#e0e0e0;margin-bottom:14px;">SINGLE STRATEGY</div>
-    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">STRATEGY</div>
-    <select id="ws" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">${st.map(s=>'<option>'+s+'</option>').join('')}</select>
-    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">ACCOUNT</div>
-    <select id="wb" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">${br.map(([id,b])=>'<option value="'+id+'">'+(b.name||id)+'</option>').join('')}</select>
+    <div style="font-size:13px;font-weight:500;color:#e0e0e0;margin-bottom:14px;">EDIT — ${name}</div>
     <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">SYMBOL</div>
-    <select id="wy" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">${sy.map(s=>'<option>'+s+'</option>').join('')}</select>
-    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">QUANTITY</div>
-    <input id="wq" type="number" value="1" min="1" style="width:80px;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">
-    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">ALLOCATION</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;"><input id="wa" type="range" min="10" max="100" step="10" value="100" style="flex:1;" oninput="document.getElementById('wav').textContent=this.value+'%'"><span id="wav" style="color:#e0e0e0;min-width:40px;text-align:right;">100%</span></div>
-    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;font-weight:500;background:#1e3a5f;color:#60a5fa;border:1px solid #2a4a6f;border-radius:4px;cursor:pointer;" onclick="createSolo()">CREATE</button>
-    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;background:transparent;color:#555;border:1px solid #252530;border-radius:4px;cursor:pointer;margin-top:4px;" onclick="showWizard()">BACK</button>`;
+    <input id="ep-sym" type="text" value="${p.symbol||'SPY'}" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;text-transform:uppercase;">
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">RISK % OF EQUITY <span style="color:#555;">— 0 = use fixed qty</span></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><input id="ep-risk" type="number" value="${p.risk_pct||0}" min="0" max="10" step="0.5" style="width:80px;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;"><span style="color:#555;font-size:10px;">%</span></div>
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">FIXED CONTRACTS <span style="color:#555;">— used when risk % = 0</span></div>
+    <input id="ep-qty" type="number" value="${p.quantity||1}" min="1" style="width:80px;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">
+    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">MAX DAILY LOSS ($) <span style="color:#555;">— 0 = auto</span></div>
+    <input id="ep-maxloss" type="number" value="${p.max_daily_loss||0}" min="0" step="50" style="width:120px;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:14px;">
+    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;font-weight:500;background:#1e3a5f;color:#60a5fa;border:1px solid #2a4a6f;border-radius:4px;cursor:pointer;" onclick="savePortfolioEdit('${name}')">SAVE</button>
+    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;background:transparent;color:#555;border:1px solid #252530;border-radius:4px;cursor:pointer;margin-top:4px;" onclick="hideWiz()">CANCEL</button>`;
 }
 
-function wizPort() {
-  const st = Object.entries(STATE.strategies || {});
-  const br = Object.entries(STATE.brokers || {});
-  document.getElementById('wizard-content').innerHTML = `
-    <div style="font-size:13px;font-weight:500;color:#e0e0e0;margin-bottom:14px;">PORTFOLIO</div>
-    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">NAME</div>
-    <input id="pn" type="text" placeholder="e.g. Morning Scalps" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">
-    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">ACCOUNT</div>
-    <select id="pb" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;">${br.map(([id,b])=>'<option value="'+id+'">'+(b.name||id)+'</option>').join('')}</select>
-    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">STRATEGIES</div>
-    <div style="border:1px solid #1e1e2e;border-radius:4px;overflow:hidden;margin-bottom:10px;">${st.map(([n,sr])=>{const wr=sr.stats?sr.stats.win_rate||0:0;return '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #1a1a28;cursor:pointer;font-size:10px;"><input type="checkbox" value="'+n+'" class="pcb"><span style="color:#e0e0e0;">'+n+'</span><span style="margin-left:auto;color:#555;">'+wr+'%</span></label>';}).join('')}</div>
-    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">SIZING</div>
-    <select id="ps" style="width:100%;font-size:11px;font-family:inherit;padding:6px 8px;background:#0d0d14;color:#e0e0e0;border:1px solid #252530;border-radius:4px;margin-bottom:10px;"><option value="risk_parity">Risk parity (auto-balance)</option><option value="equal_contracts">Equal contracts</option><option value="weighted">Win rate weighted</option><option value="manual">Manual</option></select>
-    <div style="font-size:10px;color:#60a5fa;margin-bottom:4px;">RISK BUDGET</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;"><input id="pr" type="range" min="0.1" max="5" step="0.1" value="1.0" style="flex:1;" oninput="document.getElementById('prv').textContent=parseFloat(this.value).toFixed(1)+'%'"><span id="prv" style="color:#e0e0e0;min-width:40px;text-align:right;">1.0%</span></div>
-    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;font-weight:500;background:#1e3a5f;color:#60a5fa;border:1px solid #2a4a6f;border-radius:4px;cursor:pointer;" onclick="createPort()">CREATE PORTFOLIO</button>
-    <button style="width:100%;padding:8px;font-size:11px;font-family:inherit;background:transparent;color:#555;border:1px solid #252530;border-radius:4px;cursor:pointer;margin-top:4px;" onclick="showWizard()">BACK</button>`;
-}
-
-async function createSolo() {
-  await fetch('/api/allocation/create', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({strategy:document.getElementById('ws').value, broker:document.getElementById('wb').value, symbol:document.getElementById('wy').value, quantity:parseInt(document.getElementById('wq').value), allocation_pct:parseInt(document.getElementById('wa').value)})});
+async function savePortfolioEdit(name) {
+  const body = {
+    symbol: document.getElementById('ep-sym').value.trim().toUpperCase(),
+    risk_pct: parseFloat(document.getElementById('ep-risk').value) || 0,
+    quantity: parseInt(document.getElementById('ep-qty').value) || 1,
+    max_daily_loss: parseFloat(document.getElementById('ep-maxloss').value) || 0,
+  };
+  await fetch('/api/portfolio/' + encodeURIComponent(name), {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
   hideWiz(); poll();
 }
 
-async function createPort() {
-  const checked = [...document.querySelectorAll('.pcb:checked')].map(c=>c.value);
-  await fetch('/api/portfolio/create', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name:document.getElementById('pn').value, broker:document.getElementById('pb').value, strategies:checked, sizing_mode:document.getElementById('ps').value, risk_pct:parseFloat(document.getElementById('pr').value)})});
-  hideWiz(); poll();
+function deletePortfolio(name) {
+  const overlay = document.getElementById('confirm-overlay');
+  overlay.style.display = 'flex';
+  document.getElementById('confirm-content').innerHTML = `
+    <div style="font-size:13px;font-weight:700;color:#f87171;margin-bottom:12px;">DELETE — ${name}</div>
+    <div style="font-size:10px;color:#888;margin-bottom:16px;">This will remove the portfolio and close any open trades.</div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <button style="padding:8px 20px;font-size:11px;font-family:inherit;font-weight:700;background:#4a2020;color:#f87171;border:1px solid #6a2020;border-radius:4px;cursor:pointer;" onclick="confirmDelete('${name}')">DELETE</button>
+      <button style="padding:8px 20px;font-size:11px;font-family:inherit;background:transparent;color:#555;border:1px solid #252530;border-radius:4px;cursor:pointer;" onclick="document.getElementById('confirm-overlay').style.display='none'">CANCEL</button>
+    </div>`;
+}
+
+async function confirmDelete(name) {
+  document.getElementById('confirm-overlay').style.display = 'none';
+  await fetch('/api/portfolio/' + encodeURIComponent(name), {method:'DELETE'});
+  poll();
 }
 
 // API polling
@@ -426,7 +468,7 @@ function renderState(s) {
   const dp = bk.reduce((a, b) => a + (b.connected ? (b.day_pnl||0) : 0), 0);
   const oc = Object.values(s.active_trades||{}).filter(t => t.status==='OPEN'||t.status==='SIM').length;
   const sc = Object.values(s.strategies||{}).filter(x => x.enabled).length;
-  const bc = Object.keys(s.portfolios||{}).length + Object.keys(s.allocations||{}).length;
+  const bc = Object.keys(s.portfolios||{}).length;
   const sg = (s.log||[]).filter(l => l.toLowerCase().includes('signal')).length;
   const pc = dp >= 0 ? 'grn' : 'red';
 
@@ -435,67 +477,48 @@ function renderState(s) {
     <div class="mc"><div class="mc-l">DAY P&L</div><div class="mc-v ${pc}">$${dp>=0?'+':''}${dp.toFixed(2)}</div></div>
     <div class="mc"><div class="mc-l">OPEN POS</div><div class="mc-v">${oc}</div></div>
     <div class="mc"><div class="mc-l">STRATEGIES</div><div class="mc-v">${sc}</div></div>
-    <div class="mc"><div class="mc-l">BOOKS</div><div class="mc-v">${bc}</div></div>
+    <div class="mc"><div class="mc-l">PORTFOLIOS</div><div class="mc-v">${bc}</div></div>
     <div class="mc"><div class="mc-l">SIGNALS</div><div class="mc-v">${sg}</div></div>`;
 
-  // Books
+  // Books (portfolios only now)
   let bh = '';
   for (const [n, p] of Object.entries(s.portfolios||{})) {
-    const strats = (p.strategies||[]).join(', ');
+    const trade = s.active_trades && s.active_trades[n];
+    const hasOpen = trade && (trade.status === 'OPEN' || trade.status === 'SIM');
+    const riskLabel = p.risk_pct > 0 ? p.risk_pct + '% risk' : p.quantity + ' contracts';
+    const lossLabel = p.max_daily_loss > 0 ? ' · $' + p.max_daily_loss + ' max loss' : '';
     bh += `<div class="port-card">
       <div class="port-top">
         <span class="port-name" onclick="showPortDetail('${esc(n)}')">${esc(n)}</span>
         <button class="port-toggle ${p.enabled?'on':'off'}" onclick="toggleBookAPI('${esc(n)}',this)"><div class="port-toggle-dot"></div></button>
       </div>
       <div class="port-meta">
+        <span class="port-pnl" style="color:${hasOpen?'#4ade80':'#555'};">${hasOpen?trade.direction:'idle'}</span>
         <span class="port-conn"><span class="port-conn-dot" style="background:${p.enabled?'#4ade80':'#555'};"></span> ${esc(p.broker)}</span>
       </div>
-      <div class="port-trades">${strats} · ${p.sizing_mode} · ${p.risk_pct}% risk</div>
+      <div class="port-trades">${esc(p.strategy)} · ${esc(p.symbol)} · ${riskLabel}${lossLabel}</div>
+      <div class="port-trades">${p.today_traded ? 'traded today' : 'waiting for signal'}</div>
       <div class="port-actions">
-        <button class="port-act port-act-sell" onclick="sellAll('${esc(n)}')">sell all</button>
+        <button class="port-act" onclick="editPortfolio('${esc(n)}')">edit</button>
+        <button class="port-act port-act-sell" onclick="sellAll('${esc(n)}')">close</button>
+        <button class="port-act" style="color:#f87171;" onclick="deletePortfolio('${esc(n)}')">delete</button>
       </div>
     </div>`;
   }
 
-  for (const [n, a] of Object.entries(s.allocations||{})) {
-    const trade = s.active_trades && s.active_trades[n];
-    const hasOpen = trade && (trade.status === 'OPEN' || trade.status === 'SIM');
-    bh += `<div class="port-card">
-      <div class="port-top">
-        <span class="port-name" onclick="showPortDetail('${esc(n)}')">${esc(n)}</span>
-        <button class="port-toggle ${a.enabled?'on':'off'}" onclick="toggleBookAPI('${esc(n)}',this)"><div class="port-toggle-dot"></div></button>
-      </div>
-      <div class="port-meta">
-        <span class="port-pnl" style="color:${hasOpen?'#4ade80':'#555'};">${hasOpen?trade.direction:'idle'}</span>
-        <span class="port-conn"><span class="port-conn-dot" style="background:${a.enabled?'#4ade80':'#555'};"></span> ${esc(a.broker)}</span>
-      </div>
-      <div class="port-trades">${a.quantity}x ${a.symbol} · ${a.allocation_pct}% alloc</div>
-      <div class="port-actions">
-        <button class="port-act port-act-sell" onclick="sellAll('${esc(n)}')">sell all</button>
-      </div>
-    </div>`;
-  }
-
-  const booked = new Set();
-  for (const p of Object.values(s.portfolios||{})) (p.strategies||[]).forEach(x=>booked.add(x));
-  for (const a of Object.keys(s.allocations||{})) booked.add(a);
+  // Show unassigned strategies
+  const assigned = new Set(Object.values(s.portfolios||{}).map(p=>p.strategy));
   for (const [n, sr] of Object.entries(s.strategies||{})) {
-    if (booked.has(n)) continue;
-    const trade = s.active_trades && s.active_trades[n];
-    const hasOpen = trade && (trade.status === 'OPEN' || trade.status === 'SIM');
+    if (assigned.has(n)) continue;
     bh += `<div class="port-card">
       <div class="port-top">
-        <span class="port-name">${esc(n)}</span>
-        <button class="port-toggle ${sr.enabled?'on':'off'}" onclick="toggleBookAPI('${esc(n)}',this)"><div class="port-toggle-dot"></div></button>
+        <span class="port-name" style="color:#555;">${esc(n)}</span>
+        <span style="font-size:9px;color:#555;">no portfolio</span>
       </div>
-      <div class="port-meta">
-        <span class="port-pnl" style="color:${hasOpen?'#4ade80':'#555'};">${hasOpen?trade.direction:'idle'}</span>
-        <span style="font-size:11px;color:#555;">${sr.ready?'ready':'loading...'}</span>
-      </div>
-      <div class="port-trades">Win rate: ${sr.stats?sr.stats.win_rate||0:0}% · ${sr.today_traded?'traded today':'waiting'}</div>
+      <div class="port-trades" style="color:#444;">Win rate: ${sr.stats?sr.stats.win_rate||0:0}% · ${sr.ready?'ready':'loading...'}</div>
     </div>`;
   }
-  if (!bh) bh = '<div class="empty">No books configured</div>';
+  if (!bh) bh = '<div class="empty">No portfolios — click + NEW</div>';
   document.getElementById('books-list').innerHTML = bh;
 
   // Exposure
