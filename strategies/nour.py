@@ -346,9 +346,9 @@ class NourStrategy(BaseStrategy):
         if not (now.hour == 9 and 31 <= now.minute <= 32):
             return None
 
-        # Return cached signal if we already ran today
-        if self._last_signal and self._last_signal_date == now.date():
-            return self._last_signal  # None if confidence was too low
+        # Return cached result if we already ran today (even if signal was None)
+        if self._last_signal_date == now.date():
+            return self._last_signal
 
         # Get today's data
         today_df = self._get_today_data()
