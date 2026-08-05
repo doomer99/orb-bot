@@ -10,10 +10,12 @@ SYMBOL_MAP = {
     "SPY": "MES",
     "ES": "ES",
     "MES": "MES",
+    "MES1!": "MES",
     # Nasdaq
     "QQQ": "MNQ",
     "NQ": "NQ",
     "MNQ": "MNQ",
+    "MNQ1!": "MNQ",
     # Gold
     "GLD": "MGC",
     "GC": "GC",
