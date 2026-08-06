@@ -1,6 +1,13 @@
-# router.py — Portfolio-driven order router
+# router.py — Portfolio-driven order router (FIXED for gold 24h trading)
 # Each portfolio = one broker + one strategy + risk config.
 # The main loop iterates portfolios, not strategies.
+#
+# FIXES applied:
+#   1. Removed pre-market sleep that blocked Asia/London sessions
+#   2. Removed noon hard stop that blocked Afternoon session
+#   3. Removed portfolio.today_traded gate that limited gold to 1 trade/day
+#      (session-level limits are handled correctly inside the strategy)
+
 import time, threading, json, os, pytz
 from datetime import datetime, date
 from typing import Dict, List, Optional
@@ -132,7 +139,6 @@ class Router:
     # ── Strategies ──
     def register_strategy(self, strategy: BaseStrategy):
         self.strategies[strategy.name] = strategy
-        # Enable strategy if any portfolio references it
         has_portfolio = any(
             p.strategy_name == strategy.name and p.enabled
             for p in self.portfolios.values()
@@ -165,12 +171,10 @@ class Router:
             "enabled": True,
         })
         self.portfolios[name] = portfolio
-        # Enable the strategy if it wasn't already
         if strategy in self.strategies:
             strat = self.strategies[strategy]
             if not strat.enabled:
                 strat.enabled = True
-                # Initialize it now so it's ready immediately
                 try:
                     self.log(f"Initializing [{strategy}] for new portfolio...")
                     ok = strat.initialize()
@@ -184,7 +188,6 @@ class Router:
     def delete_portfolio(self, name: str) -> bool:
         if name not in self.portfolios:
             return False
-        # Close any active trade first
         if name in self.active_trades:
             self._close_order(name)
         del self.portfolios[name]
@@ -194,7 +197,6 @@ class Router:
 
     # ── Orders ──
     def _get_equity(self, broker: BaseBroker) -> float:
-        """Get account equity from broker, or 0 if unavailable."""
         if not broker:
             return 0
         try:
@@ -204,7 +206,6 @@ class Router:
             return 0
 
     def _place_order(self, portfolio_name: str, signal: Signal) -> bool:
-        """Place an order for a specific portfolio."""
         if self._circuit_breaker_active:
             self.log(f"[{portfolio_name}] blocked — circuit breaker active")
             return False
@@ -218,7 +219,6 @@ class Router:
         symbol = portfolio.symbol
         equity = self._get_equity(broker)
 
-        # Dynamic sizing from equity + risk, or fallback to static quantity
         if equity > 0:
             asset_data = get_asset_data([symbol])
             quantity = portfolio.calculate_quantity(equity, asset_data)
@@ -228,7 +228,6 @@ class Router:
             quantity = portfolio.quantity
             self.log(f"[{portfolio_name}] static: {quantity}x {symbol} (no equity data)")
 
-        # Check portfolio-level risk
         if not portfolio.risk_ok(equity):
             self.log(f"[{portfolio_name}] blocked — daily loss limit reached")
             return False
@@ -271,14 +270,12 @@ class Router:
         return result.success
 
     def _close_order(self, portfolio_name: str) -> bool:
-        """Close an active trade for a portfolio."""
         trade = self.active_trades.get(portfolio_name)
         if not trade:
             return False
 
         portfolio = self.portfolios.get(portfolio_name)
         if not portfolio:
-            # Portfolio was deleted but trade still open — try to close anyway
             self.log(f"[{portfolio_name}] orphan trade — marking closed")
             trade["status"] = "CLOSED"
             self._save_active_trades()
@@ -333,7 +330,6 @@ class Router:
         self.init_brokers()
         self.init_strategies()
 
-        # Log portfolio config
         for name, p in self.portfolios.items():
             status = "enabled" if p.enabled else "disabled"
             self.log(f"Portfolio [{name}]: {p.strategy_name} -> "
@@ -365,36 +361,34 @@ class Router:
                 time.sleep(60)
                 continue
 
-            # Weekend — sleep
-            if now.weekday() >= 5:
+            # Weekend — sleep longer (but still check Sunday evening for Asia open)
+            if now.weekday() == 6 and now.hour < 17:
+                # Sunday before 5pm ET — futures not open yet
+                time.sleep(300)
+                continue
+            if now.weekday() == 5:
+                # Saturday — fully closed
                 time.sleep(300)
                 continue
 
-            # Pre-market — sleep
-            if now.hour < 9:
-                time.sleep(30)
-                continue
-
-            # Noon hard stop — close everything
-            if now.hour >= 12:
-                for name in list(self.active_trades):
-                    if self.active_trades[name]["status"] in ("OPEN", "SIM"):
-                        self.log(f"Noon hard stop — closing [{name}]")
-                        self._close_order(name)
-                time.sleep(60)
-                continue
+            # ─────────────────────────────────────────────────
+            # FIX #1 & #2: REMOVED pre-market sleep and noon
+            # hard stop. The strategy's get_trading_window()
+            # and internal session logic handle when to trade.
+            # Gold trades nearly 24h — the router must not
+            # impose stock-market hours on it.
+            # ─────────────────────────────────────────────────
 
             # ── Main portfolio loop ──
             for port_name, portfolio in self.portfolios.items():
                 if not portfolio.enabled:
                     continue
 
-                # Get the strategy for this portfolio
                 strategy = self.strategies.get(portfolio.strategy_name)
                 if not strategy or not strategy.is_ready:
                     continue
 
-                # Check trading window
+                # Check trading window (strategy defines its own hours)
                 win_start, win_end = strategy.get_trading_window()
                 current_time = now.time()
 
@@ -406,11 +400,22 @@ class Router:
                             self.log(f"Exit signal — [{port_name}]")
                             self._close_order(port_name)
                             strategy.record_trade(trade["signal"], "CLOSED")
-                    continue  # already in a trade or just closed, skip to next
+                            # Don't continue — allow a new signal this iteration
+                            # (gold can re-enter in the next session immediately)
+                        else:
+                            continue  # still in a trade, skip to next portfolio
+                    else:
+                        # Trade is closed/done, clean it up
+                        del self.active_trades[port_name]
+                        self._save_active_trades()
 
-                # Not in a trade — check for new signal
-                if portfolio.today_traded:
-                    continue
+                # ─────────────────────────────────────────────
+                # FIX #3: REMOVED portfolio.today_traded gate.
+                # Gold's session-level limit (1 per session) is
+                # handled inside check_signal(). The router
+                # should NOT impose a 1-per-day limit on top.
+                # ─────────────────────────────────────────────
+
                 if not (win_start <= current_time <= win_end):
                     continue
                 if not self.risk_ok():
@@ -420,11 +425,9 @@ class Router:
                     signal = strategy.check_signal(now)
                     if signal:
                         self.log(f"[{port_name}] signal: {signal.direction} "
-                                 f"({signal.confidence:.1%})")
-                        success = self._place_order(port_name, signal)
-                        # Mark this portfolio as traded today regardless of success
-                        # so we don't spam retries
-                        portfolio.today_traded = True
+                                 f"({signal.confidence:.1%}) "
+                                 f"[{signal.metadata.get('session', '?')}]")
+                        self._place_order(port_name, signal)
                 except Exception as e:
                     self.log(f"[{port_name}] signal error: {e}")
 
@@ -454,7 +457,6 @@ class Router:
         portfolio_states = {}
         for name, portfolio in self.portfolios.items():
             p = portfolio.to_dict()
-            p["today_traded"] = portfolio.today_traded
             trade = self.active_trades.get(name)
             if trade:
                 p["active_trade"] = {
